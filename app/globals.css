@@ -1,0 +1,65 @@
+/* src/app/globals.css
+   ─────────────────────────────────────────────────────────────────────────────
+   Warm Academic Pastel interaction layer.
+   Imported once by the root layout (src/app/layout.tsx). Body/ink colors are
+   left to each surface — these classes are additive, not a reset.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --pastel-blue: #a7c7e7;
+  --pastel-pink: #ffb3ba;
+  --pastel-cream: #fff8e7;
+  --pastel-paper: #faf6ef;
+  --pastel-peach: #ffdab9;
+  --ink: #364152;
+}
+
+/* 3D tactile button: 4px block shadow at rest; presses down 2px when active.
+   Usage: className="btn-tactile" + your inline background/color. */
+.btn-tactile {
+  box-shadow: 0 4px 0 rgba(54, 65, 82, 0.28);
+  transform: translateY(0);
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    filter 120ms ease;
+}
+.btn-tactile:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+.btn-tactile:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(54, 65, 82, 0.28);
+}
+.btn-tactile:disabled {
+  box-shadow: 0 2px 0 rgba(54, 65, 82, 0.14);
+}
+
+/* Shimmering progress fill — a light sweep that never stops moving forward. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+@keyframes shimmer-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Journal helpers */
+.serif-journal {
+  font-family: Georgia, "Times New Roman", serif;
+}
