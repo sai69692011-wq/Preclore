@@ -1,0 +1,288 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import ShimmerProgress from '@/components/ui/shimmer-progress';
+import TactileButton from '@/components/ui/tactile-button';
+import { PROJECT_TAGS, QUEST_STEPS } from '@/lib/constants';
+
+const STORAGE_KEY = 'preclore-v24-submit-quest-draft';
+
+const initialForm = {
+  title: '',
+  regionLabel: '',
+  summary: '',
+  problemStatement: '',
+  hypothesis: '',
+  methodology: '',
+  evidenceUrls: '',
+  citations: '',
+  systemsImpact: '',
+  publicGoodCase: '',
+  reproducibilityNote: '',
+  projectTag: 'Academic Theory',
+  confirmPublicGood: false
+};
+
+function isHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function parseEvidenceUrls(value) {
+  return String(value || '')
+    .split(/\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export default function SubmitQuest({ isAuthenticated }) {
+  const router = useRouter();
+  const [stepIndex, setStepIndex] = useState(0);
+  const [form, setForm] = useState(initialForm);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  const progress = useMemo(() => ((stepIndex + 1) / QUEST_STEPS.length) * 100, [stepIndex]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          setForm((current) => ({ ...current, ...parsed }));
+        }
+      }
+    } catch {
+      // Ignore corrupted local draft state.
+    } finally {
+      setDraftLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftLoaded) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+    } catch {
+      // Ignore storage write errors.
+    }
+  }, [draftLoaded, form]);
+
+  function update(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function validateCurrentStep() {
+    const requiredByStep = [
+      ['title', 'regionLabel'],
+      ['summary'],
+      ['problemStatement'],
+      ['hypothesis'],
+      ['methodology'],
+      [],
+      ['systemsImpact', 'publicGoodCase', 'projectTag'],
+      ['confirmPublicGood']
+    ];
+
+    const requiredFields = requiredByStep[stepIndex];
+    const invalid = requiredFields.find((field) => {
+      if (field === 'confirmPublicGood') return !form.confirmPublicGood;
+      return !String(form[field] || '').trim();
+    });
+
+    if (invalid) {
+      setError('Complete this quest step before moving ahead.');
+      return false;
+    }
+
+    if (stepIndex === 0) {
+      if (String(form.title).trim().length < 8) {
+        setError('Project title should be at least 8 characters.');
+        return false;
+      }
+      if (String(form.regionLabel).trim().length < 2) {
+        setError('Add a valid city or region.');
+        return false;
+      }
+    }
+
+    if (stepIndex === 5 || stepIndex === 7) {
+      const evidenceUrls = parseEvidenceUrls(form.evidenceUrls);
+      const invalidUrl = evidenceUrls.find((url) => !isHttpUrl(url));
+      if (invalidUrl) {
+        setError(`Invalid evidence URL: ${invalidUrl}`);
+        return false;
+      }
+      if (form.projectTag === 'Field Verified' && evidenceUrls.length === 0) {
+        setError('Field Verified projects must include at least one HTTP(S) evidence URL.');
+        return false;
+      }
+    }
+
+    if (stepIndex === 7 && String(form.publicGoodCase || '').trim().length < 20) {
+      setError('Public good case should be at least 20 characters.');
+      return false;
+    }
+
+    setError('');
+    return true;
+  }
+
+  function nextStep() {
+    if (!validateCurrentStep()) return;
+    setStepIndex((current) => Math.min(current + 1, QUEST_STEPS.length - 1));
+  }
+
+  function prevStep() {
+    setError('');
+    setStepIndex((current) => Math.max(current - 1, 0));
+  }
+
+  async function handleSubmit() {
+    if (!validateCurrentStep()) return;
+
+    setSubmitting(true);
+    setError('');
+
+    const response = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
+    });
+
+    const result = await response.json();
+    setSubmitting(false);
+
+    if (!response.ok) {
+      setError(result.error || 'Unable to publish project.');
+      return;
+    }
+
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore storage cleanup errors.
+    }
+
+    router.push(`/reveal/${result.project.id}`);
+  }
+
+  const step = QUEST_STEPS[stepIndex];
+
+  const panels = {
+    identity: (
+      <div className="grid gap-4 md:grid-cols-2">
+        <input className="field" placeholder="Project title" value={form.title} onChange={(e) => update('title', e.target.value)} />
+        <input className="field" placeholder="City / Region" value={form.regionLabel} onChange={(e) => update('regionLabel', e.target.value)} />
+      </div>
+    ),
+    summary: (
+      <textarea className="field min-h-36" placeholder="What did you observe in the real world?" value={form.summary} onChange={(e) => update('summary', e.target.value)} />
+    ),
+    problem: (
+      <textarea className="field min-h-36" placeholder="What exact problem are you naming?" value={form.problemStatement} onChange={(e) => update('problemStatement', e.target.value)} />
+    ),
+    hypothesis: (
+      <textarea className="field min-h-36" placeholder="What is your hypothesis or theory of change?" value={form.hypothesis} onChange={(e) => update('hypothesis', e.target.value)} />
+    ),
+    method: (
+      <textarea className="field min-h-36" placeholder="Describe your method. How can someone reproduce this?" value={form.methodology} onChange={(e) => update('methodology', e.target.value)} />
+    ),
+    evidence: (
+      <div className="space-y-4">
+        <textarea className="field min-h-24" placeholder="Evidence links (GPS/video/docs) — one per line or comma separated" value={form.evidenceUrls} onChange={(e) => update('evidenceUrls', e.target.value)} />
+        <textarea className="field min-h-24" placeholder="Citations, references, or source material" value={form.citations} onChange={(e) => update('citations', e.target.value)} />
+        <textarea className="field min-h-24" placeholder="Reproducibility note" value={form.reproducibilityNote} onChange={(e) => update('reproducibilityNote', e.target.value)} />
+      </div>
+    ),
+    impact: (
+      <div className="space-y-4">
+        <textarea className="field min-h-28" placeholder="What systems-level impact could this create?" value={form.systemsImpact} onChange={(e) => update('systemsImpact', e.target.value)} />
+        <textarea className="field min-h-28" placeholder="Why does this serve the public good?" value={form.publicGoodCase} onChange={(e) => update('publicGoodCase', e.target.value)} />
+        <div>
+          <div className="mb-2 text-sm font-black text-ink">Project Type tag</div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {PROJECT_TAGS.map((tag) => (
+              <label key={tag} className={`rounded-2xl border-2 p-4 text-sm font-semibold transition ${form.projectTag === tag ? 'border-ink bg-mint' : 'border-ink/30 bg-white/70'}`}>
+                <input
+                  checked={form.projectTag === tag}
+                  className="mr-2"
+                  name="projectTag"
+                  onChange={() => update('projectTag', tag)}
+                  type="radio"
+                />
+                {tag}
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+    ),
+    publish: (
+      <div className="space-y-5">
+        <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Instant VQ Publish</div>
+          <p className="mt-3 text-sm leading-6 text-ink/80">
+            The deterministic VQ Engine scores your work instantly and publishes it without human review.
+            If you selected <strong>Project: Needs Funding</strong>, add your parental buffer UPI ID on the Profile page to unlock direct supporter routing.
+          </p>
+        </div>
+        <label className="flex items-start gap-3 rounded-2xl border-2 border-ink/30 bg-white/70 p-4 text-sm text-ink/80">
+          <input checked={form.confirmPublicGood} onChange={(e) => update('confirmPublicGood', e.target.checked)} type="checkbox" />
+          <span>I confirm this work is submitted as a public good registry entry and can be published instantly by the autonomous VQ Engine.</span>
+        </label>
+      </div>
+    )
+  };
+
+  return (
+    <div className="space-y-6 rounded-[34px] border-2 border-ink bg-white/70 p-6 shadow-[0_8px_0_0_rgba(44,43,42,1)] lg:p-8">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">8-Step Quest</div>
+            <h2 className="text-3xl font-black text-ink">Step {stepIndex + 1}: {step.label}</h2>
+          </div>
+          <div className="rounded-full border-2 border-ink bg-butter px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-ink">
+            No human review
+          </div>
+        </div>
+        <ShimmerProgress value={progress} label={`Quest progress ${Math.round(progress)}%`} />
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/70">
+          {draftLoaded ? 'Draft autosave active' : 'Loading draft...'}
+        </div>
+      </div>
+
+      {!isAuthenticated ? (
+        <div className="rounded-[24px] border-2 border-ink bg-peach p-5 text-sm font-semibold text-ink">
+          Sign in first so your submission can be attributed to your researcher profile.
+        </div>
+      ) : null}
+
+      <div className="space-y-5">
+        {panels[step.id]}
+        {error ? <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">{error}</div> : null}
+      </div>
+
+      <div className="flex flex-wrap justify-between gap-3">
+        <TactileButton onClick={prevStep} variant="ghost" disabled={stepIndex === 0}>Back</TactileButton>
+        <div className="flex gap-3">
+          {stepIndex < QUEST_STEPS.length - 1 ? (
+            <TactileButton onClick={nextStep} variant="primary">Next Step</TactileButton>
+          ) : (
+            <TactileButton onClick={handleSubmit} variant="primary" disabled={!isAuthenticated || submitting}>
+              {submitting ? 'Publishing...' : 'Publish + Reveal VQ'}
+            </TactileButton>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
