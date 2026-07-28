@@ -5,6 +5,10 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
+  verification: {
+   <meta name="google-site-verification" content="gm9ICkXCJ55ZXRNCiasoLFF_lFdk7IAzbTglKsIdGWU" />,
+  },
+ 
   title: {
     default: 'Preclore v2.4 — Public Good Registry',
     template: '%s | Preclore'
