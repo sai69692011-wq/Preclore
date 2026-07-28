@@ -5,16 +5,19 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
+
   verification: {
-   <meta name="google-site-verification" content="gm9ICkXCJ55ZXRNCiasoLFF_lFdk7IAzbTglKsIdGWU" />,
+    google: 'gm9ICkXCJ55ZXRNCiasoLFF_lFdk7IAzbTglKsIdGWU'
   },
- 
+
   title: {
     default: 'Preclore v2.4 — Public Good Registry',
     template: '%s | Preclore'
   },
+
   description:
     'Preclore is a public-good registry for student-led systems research with instant deterministic VQ scoring, searchable journal pages, and direct mission support.',
+
   keywords: [
     'Preclore',
     'student research',
@@ -24,9 +27,11 @@ export const metadata = {
     'research journal',
     'field verified research'
   ],
+
   alternates: {
     canonical: '/'
   },
+
   openGraph: {
     title: 'Preclore v2.4 — Public Good Registry',
     description:
@@ -35,12 +40,14 @@ export const metadata = {
     siteName: 'Preclore',
     type: 'website'
   },
+
   twitter: {
     card: 'summary_large_image',
     title: 'Preclore v2.4 — Public Good Registry',
     description:
       'Student-led systems research, instant VQ scoring, and a public-good journal.'
   },
+
   robots: {
     index: true,
     follow: true,
@@ -59,7 +66,9 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <SiteHeader />
-        <main className="mx-auto max-w-6xl px-4 py-8 lg:px-6 lg:py-10">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-8 lg:px-6 lg:py-10">
+          {children}
+        </main>
       </body>
     </html>
   );
