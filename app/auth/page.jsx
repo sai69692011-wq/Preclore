@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/browser';
@@ -24,6 +24,8 @@ function normalizeRole(role) {
 
 export default function AuthPage() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +34,8 @@ export default function AuthPage() {
   const [identifierId, setIdentifierId] = useState('');
   const [marketingConsent, setMarketingConsent] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -45,7 +49,34 @@ export default function AuthPage() {
     return isValidPassword(password) ? '' : 'Password must be at least 8 characters.';
   }, [password]);
 
-  async function ensureProfileRow(supabase, user, profileInput = {}) {
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadSession() {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+      setCurrentUser(session?.user ?? null);
+      setCheckingSession(false);
+    }
+
+    loadSession();
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  async function ensureProfileRow(user, profileInput = {}) {
     if (!user?.id) return;
 
     await supabase.from('users').upsert({
@@ -75,7 +106,6 @@ export default function AuthPage() {
       return;
     }
 
-    const supabase = createClient();
     const cleanEmail = normalizeText(email);
 
     if (isSignUp) {
@@ -99,10 +129,7 @@ export default function AuthPage() {
       }
 
       if (data?.user && data?.session) {
-        await ensureProfileRow(supabase, data.user, {
-          fullName,
-          role
-        });
+        await ensureProfileRow(data.user, { fullName, role });
         setLoading(false);
         router.push('/profile');
         router.refresh();
@@ -127,7 +154,7 @@ export default function AuthPage() {
     }
 
     if (data?.user) {
-      await ensureProfileRow(supabase, data.user);
+      await ensureProfileRow(data.user);
     }
 
     setLoading(false);
@@ -136,10 +163,46 @@ export default function AuthPage() {
   }
 
   async function signOut() {
-    const supabase = createClient();
     await supabase.auth.signOut();
+    setCurrentUser(null);
     setMessage('Signed out.');
     setError('');
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
+        <p className="text-sm font-semibold text-ink">Checking session...</p>
+      </div>
+    );
+  }
+
+  if (currentUser) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
+        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
+          Active Session
+        </div>
+
+        <h1 className="mt-3 text-4xl font-black text-ink">You are signed in</h1>
+        <p className="mt-2 break-all text-sm text-ink/80">{currentUser.email}</p>
+
+        {message ? (
+          <div className="mt-4 rounded-2xl border-2 border-ink bg-butter p-3 text-sm font-semibold text-ink">
+            {message}
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <TactileButton onClick={() => router.push('/profile')} variant="primary">
+            Go to Profile
+          </TactileButton>
+          <TactileButton onClick={signOut} variant="ghost">
+            Sign Out
+          </TactileButton>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -295,10 +358,6 @@ export default function AuthPage() {
             variant="primary"
           >
             {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
-          </TactileButton>
-
-          <TactileButton type="button" onClick={signOut} variant="ghost">
-            Sign Out
           </TactileButton>
         </div>
       </form>
