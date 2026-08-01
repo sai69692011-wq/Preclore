@@ -31,7 +31,6 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('student');
-  const [identifierId, setIdentifierId] = useState('');
   const [marketingConsent, setMarketingConsent] = useState(true);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -116,7 +115,6 @@ export default function AuthPage() {
           data: {
             full_name: normalizeText(fullName),
             role: normalizeRole(role),
-            identifier_id: normalizeText(identifierId),
             marketing_opt_in: marketingConsent
           }
         }
@@ -264,21 +262,6 @@ export default function AuthPage() {
                 <option value="alumni_readonly">Guest / Independent Viewer</option>
               </select>
             </div>
-
-            {role !== 'alumni_readonly' ? (
-              <div>
-                <label className="mb-1 block text-xs font-black uppercase tracking-wider text-ink">
-                  {role === 'student' ? 'Student ID' : 'Mentor ID'}
-                </label>
-                <input
-                  type="text"
-                  value={identifierId}
-                  onChange={(event) => setIdentifierId(event.target.value)}
-                  className="field"
-                  placeholder={role === 'student' ? 'e.g., STU-2026-001' : 'e.g., MTR-2026-999'}
-                />
-              </div>
-            ) : null}
           </>
         ) : null}
 
