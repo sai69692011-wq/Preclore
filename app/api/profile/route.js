@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { readJsonObject } from '@/lib/request';
 import { createClient } from '@/lib/supabase/server';
 import { isValidUpiId, normalizeText } from '@/lib/utils';
 
@@ -13,6 +12,13 @@ function sanitizeUsername(value, fallback) {
   return cleaned || fallback;
 }
 
+function safeFilename(name = 'avatar') {
+  return String(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 export async function POST(request) {
   const supabase = await createClient();
   const {
@@ -23,14 +29,11 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   }
 
-  const body = await readJsonObject(request);
-  if (!body) {
-    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
-  }
+  const formData = await request.formData();
 
   const { data: existingProfile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, avatar_url')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -39,18 +42,14 @@ export async function POST(request) {
   const isMentor = currentRole === 'mentor';
   const canStoreInstitutionFields = isStudent || isMentor;
 
-  const displayName = normalizeText(body.display_name).slice(0, 80) || null;
-  const username = sanitizeUsername(body.username, `researcher-${user.id.slice(0, 8)}`);
-  const schoolName = canStoreInstitutionFields ? normalizeText(body.school_name).slice(0, 120) || null : null;
-  const gradeLevel = canStoreInstitutionFields ? normalizeText(body.grade_level).slice(0, 120) || null : null;
-  const bio = normalizeText(body.bio).slice(0, 600) || null;
-
-  const birthYear =
-    isStudent && body.birth_year !== '' && body.birth_year !== null && body.birth_year !== undefined
-      ? Number(body.birth_year)
-      : null;
-
-  const parentUpiId = isStudent ? normalizeText(body.parent_upi_id) || null : null;
+  const displayName = normalizeText(formData.get('display_name')).slice(0, 80) || null;
+  const username = sanitizeUsername(formData.get('username'), `researcher-${user.id.slice(0, 8)}`);
+  const schoolName = canStoreInstitutionFields ? normalizeText(formData.get('school_name')).slice(0, 120) || null : null;
+  const gradeLevel = canStoreInstitutionFields ? normalizeText(formData.get('grade_level')).slice(0, 120) || null : null;
+  const bio = normalizeText(formData.get('bio')).slice(0, 600) || null;
+  const birthYear = isStudent && formData.get('birth_year') ? Number(formData.get('birth_year')) : null;
+  const parentUpiId = isStudent ? normalizeText(formData.get('parent_upi_id')) || null : null;
+  const avatar = formData.get('avatar');
   const currentYear = new Date().getFullYear();
 
   if (displayName && displayName.length < 2) {
@@ -68,6 +67,26 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid parent UPI ID format.' }, { status: 400 });
   }
 
+  let avatarUrl = existingProfile?.avatar_url || null;
+
+  if (avatar instanceof File && avatar.size > 0) {
+    const avatarPath = `${user.id}/${Date.now()}-${safeFilename(avatar.name || 'avatar')}`;
+    const uploadResult = await supabase.storage.from('profile-images').upload(avatarPath, avatar, {
+      contentType: avatar.type || 'image/png',
+      upsert: false
+    });
+
+    if (uploadResult.error) {
+      return NextResponse.json({ error: uploadResult.error.message }, { status: 400 });
+    }
+
+    const {
+      data: { publicUrl }
+    } = supabase.storage.from('profile-images').getPublicUrl(avatarPath);
+
+    avatarUrl = publicUrl;
+  }
+
   const payload = {
     id: user.id,
     display_name: displayName,
@@ -77,6 +96,7 @@ export async function POST(request) {
     bio,
     birth_year: birthYear,
     parent_upi_id: parentUpiId,
+    avatar_url: avatarUrl,
     updated_at: new Date().toISOString()
   };
 
