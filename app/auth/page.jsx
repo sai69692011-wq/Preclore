@@ -205,14 +205,18 @@ export default function AuthPage() {
             {role !== 'alumni_readonly' ? (
               <div>
                 <label className="mb-1 block text-xs font-black uppercase tracking-wider text-ink">
-                  {role === 'student' ? 'Student ID' : 'Mentor ID'}
+                  {role === 'student' ? 'School / College Student ID Number' : 'Mentor / Staff ID Number'}
                 </label>
                 <input
                   type="text"
                   value={identifierId}
                   onChange={(event) => setIdentifierId(event.target.value)}
                   className="field"
-                  placeholder={role === 'student' ? 'e.g., STU-2026-001' : 'e.g., MTR-2026-999'}
+                  placeholder={
+                    role === 'student'
+                      ? 'e.g., Enter your school/college ID number (e.g., STU-2026-001)'
+                      : 'e.g., Enter your staff ID number'
+                  }
                 />
               </div>
             ) : null}
