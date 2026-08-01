@@ -12,9 +12,7 @@ const initialForm = {
   title: '',
   regionLabel: '',
   summary: '',
-  problemStatement: '',
-  hypothesis: '',
-  methodology: '',
+  pdfFileName: '',
   evidenceUrls: '',
   citations: '',
   systemsImpact: '',
@@ -44,6 +42,7 @@ export default function SubmitQuest({ isAuthenticated }) {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState(initialForm);
+  const [pdfFile, setPdfFile] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -79,55 +78,53 @@ export default function SubmitQuest({ isAuthenticated }) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function handlePdfChange(event) {
+    const file = event.target.files?.[0] || null;
+    setPdfFile(file);
+    update('pdfFileName', file?.name || '');
+  }
+
   function validateCurrentStep() {
-    const requiredByStep = [
-      ['title', 'regionLabel'],
-      ['summary'],
-      ['problemStatement'],
-      ['hypothesis'],
-      ['methodology'],
-      [],
-      ['systemsImpact', 'publicGoodCase', 'projectTag'],
-      ['confirmPublicGood']
-    ];
-
-    const requiredFields = requiredByStep[stepIndex];
-    const invalid = requiredFields.find((field) => {
-      if (field === 'confirmPublicGood') return !form.confirmPublicGood;
-      return !String(form[field] || '').trim();
-    });
-
-    if (invalid) {
-      setError('Complete this quest step before moving ahead.');
-      return false;
-    }
-
     if (stepIndex === 0) {
       if (String(form.title).trim().length < 8) {
         setError('Project title should be at least 8 characters.');
         return false;
       }
-      if (String(form.regionLabel).trim().length < 2) {
-        setError('Add a valid city or region.');
+      if (!String(form.projectTag).trim()) {
+        setError('Please select a project type tag.');
         return false;
       }
     }
 
-    if (stepIndex === 5 || stepIndex === 7) {
+    if (stepIndex === 1) {
+      if (String(form.summary).trim().length < 40) {
+        setError('Please write a short abstract/description of at least 40 characters.');
+        return false;
+      }
+    }
+
+    if (stepIndex === 2) {
+      if (!pdfFile && !String(form.pdfFileName).trim()) {
+        setError('Please upload a project PDF before continuing.');
+        return false;
+      }
+      if (pdfFile && pdfFile.type !== 'application/pdf') {
+        setError('Only PDF files are allowed.');
+        return false;
+      }
+    }
+
+    if (stepIndex === 3 || stepIndex === 4 || stepIndex === 5) {
       const evidenceUrls = parseEvidenceUrls(form.evidenceUrls);
       const invalidUrl = evidenceUrls.find((url) => !isHttpUrl(url));
       if (invalidUrl) {
         setError(`Invalid evidence URL: ${invalidUrl}`);
         return false;
       }
-      if (form.projectTag === 'Field Verified' && evidenceUrls.length === 0) {
-        setError('Field Verified projects must include at least one HTTP(S) evidence URL.');
-        return false;
-      }
     }
 
-    if (stepIndex === 7 && String(form.publicGoodCase || '').trim().length < 20) {
-      setError('Public good case should be at least 20 characters.');
+    if (stepIndex === 5 && form.confirmPublicGood !== true) {
+      setError('Please confirm public-good publication before publishing.');
       return false;
     }
 
@@ -151,10 +148,25 @@ export default function SubmitQuest({ isAuthenticated }) {
     setSubmitting(true);
     setError('');
 
+    const payload = new FormData();
+    payload.append('title', form.title);
+    payload.append('regionLabel', form.regionLabel);
+    payload.append('summary', form.summary);
+    payload.append('evidenceUrls', form.evidenceUrls);
+    payload.append('citations', form.citations);
+    payload.append('systemsImpact', form.systemsImpact);
+    payload.append('publicGoodCase', form.publicGoodCase);
+    payload.append('reproducibilityNote', form.reproducibilityNote);
+    payload.append('projectTag', form.projectTag);
+    payload.append('confirmPublicGood', String(form.confirmPublicGood));
+
+    if (pdfFile) {
+      payload.append('pdf', pdfFile);
+    }
+
     const response = await fetch('/api/projects', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
+      body: payload
     });
 
     const result = await response.json();
@@ -178,39 +190,29 @@ export default function SubmitQuest({ isAuthenticated }) {
 
   const panels = {
     identity: (
-      <div className="grid gap-4 md:grid-cols-2">
-        <input className="field" placeholder="Project title" value={form.title} onChange={(e) => update('title', e.target.value)} />
-        <input className="field" placeholder="City / Region" value={form.regionLabel} onChange={(e) => update('regionLabel', e.target.value)} />
-      </div>
-    ),
-    summary: (
-      <textarea className="field min-h-36" placeholder="What did you observe in the real world?" value={form.summary} onChange={(e) => update('summary', e.target.value)} />
-    ),
-    problem: (
-      <textarea className="field min-h-36" placeholder="What exact problem are you naming?" value={form.problemStatement} onChange={(e) => update('problemStatement', e.target.value)} />
-    ),
-    hypothesis: (
-      <textarea className="field min-h-36" placeholder="What is your hypothesis or theory of change?" value={form.hypothesis} onChange={(e) => update('hypothesis', e.target.value)} />
-    ),
-    method: (
-      <textarea className="field min-h-36" placeholder="Describe your method. How can someone reproduce this?" value={form.methodology} onChange={(e) => update('methodology', e.target.value)} />
-    ),
-    evidence: (
       <div className="space-y-4">
-        <textarea className="field min-h-24" placeholder="Evidence links (GPS/video/docs) — one per line or comma separated" value={form.evidenceUrls} onChange={(e) => update('evidenceUrls', e.target.value)} />
-        <textarea className="field min-h-24" placeholder="Citations, references, or source material" value={form.citations} onChange={(e) => update('citations', e.target.value)} />
-        <textarea className="field min-h-24" placeholder="Reproducibility note" value={form.reproducibilityNote} onChange={(e) => update('reproducibilityNote', e.target.value)} />
-      </div>
-    ),
-    impact: (
-      <div className="space-y-4">
-        <textarea className="field min-h-28" placeholder="What systems-level impact could this create?" value={form.systemsImpact} onChange={(e) => update('systemsImpact', e.target.value)} />
-        <textarea className="field min-h-28" placeholder="Why does this serve the public good?" value={form.publicGoodCase} onChange={(e) => update('publicGoodCase', e.target.value)} />
+        <input
+          className="field"
+          placeholder="Project title"
+          value={form.title}
+          onChange={(e) => update('title', e.target.value)}
+        />
+        <input
+          className="field"
+          placeholder="City / Region (optional)"
+          value={form.regionLabel}
+          onChange={(e) => update('regionLabel', e.target.value)}
+        />
         <div>
           <div className="mb-2 text-sm font-black text-ink">Project Type tag</div>
           <div className="grid gap-3 md:grid-cols-2">
             {PROJECT_TAGS.map((tag) => (
-              <label key={tag} className={`rounded-2xl border-2 p-4 text-sm font-semibold transition ${form.projectTag === tag ? 'border-ink bg-mint' : 'border-ink/30 bg-white/70'}`}>
+              <label
+                key={tag}
+                className={`rounded-2xl border-2 p-4 text-sm font-semibold transition ${
+                  form.projectTag === tag ? 'border-ink bg-mint' : 'border-ink/30 bg-white/70'
+                }`}
+              >
                 <input
                   checked={form.projectTag === tag}
                   className="mr-2"
@@ -225,18 +227,93 @@ export default function SubmitQuest({ isAuthenticated }) {
         </div>
       </div>
     ),
+    summary: (
+      <textarea
+        className="field min-h-40"
+        placeholder="Write a short project abstract or description. This is mandatory and should explain what the project is about."
+        value={form.summary}
+        onChange={(e) => update('summary', e.target.value)}
+      />
+    ),
+    pdf: (
+      <div className="space-y-4">
+        <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Mandatory Upload</div>
+          <p className="mt-3 text-sm leading-6 text-ink/80">
+            Upload the main project PDF so reviewers and journal viewers can open the full work directly.
+          </p>
+        </div>
+
+        <input className="field" type="file" accept="application/pdf" onChange={handlePdfChange} />
+
+        {form.pdfFileName ? (
+          <div className="rounded-2xl border-2 border-ink bg-white/70 p-3 text-sm font-semibold text-ink">
+            Selected PDF: {form.pdfFileName}
+          </div>
+        ) : null}
+      </div>
+    ),
+    evidence: (
+      <div className="space-y-4">
+        <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
+          Proof is optional. Evidence, citations, and reproducibility notes can improve the VQ score but are not required to publish.
+        </div>
+
+        <textarea
+          className="field min-h-24"
+          placeholder="Evidence links (GPS/video/docs) — optional, one per line or comma separated"
+          value={form.evidenceUrls}
+          onChange={(e) => update('evidenceUrls', e.target.value)}
+        />
+        <textarea
+          className="field min-h-24"
+          placeholder="Citations, references, or source material — optional"
+          value={form.citations}
+          onChange={(e) => update('citations', e.target.value)}
+        />
+        <textarea
+          className="field min-h-24"
+          placeholder="Reproducibility note — optional"
+          value={form.reproducibilityNote}
+          onChange={(e) => update('reproducibilityNote', e.target.value)}
+        />
+      </div>
+    ),
+    impact: (
+      <div className="space-y-4">
+        <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
+          These fields are optional. They help reviewers understand what the project focuses on and can improve the VQ score.
+        </div>
+
+        <textarea
+          className="field min-h-28"
+          placeholder="What systems-level impact could this create? (optional)"
+          value={form.systemsImpact}
+          onChange={(e) => update('systemsImpact', e.target.value)}
+        />
+        <textarea
+          className="field min-h-28"
+          placeholder="Why does this serve the public good? (optional)"
+          value={form.publicGoodCase}
+          onChange={(e) => update('publicGoodCase', e.target.value)}
+        />
+      </div>
+    ),
     publish: (
       <div className="space-y-5">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
           <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Instant VQ Publish</div>
           <p className="mt-3 text-sm leading-6 text-ink/80">
-            The deterministic VQ Engine scores your work instantly and publishes it without human review.
-            If you selected <strong>Project: Needs Funding</strong>, add your parental buffer UPI ID on the Profile page to unlock direct supporter routing.
+            Your title, abstract, PDF, and project tag are the core requirements. Optional proof and context fields can improve trust and VQ scoring.
           </p>
         </div>
         <label className="flex items-start gap-3 rounded-2xl border-2 border-ink/30 bg-white/70 p-4 text-sm text-ink/80">
-          <input checked={form.confirmPublicGood} onChange={(e) => update('confirmPublicGood', e.target.checked)} type="checkbox" />
-          <span>I confirm this work is submitted as a public good registry entry and can be published instantly by the autonomous VQ Engine.</span>
+          <input
+            checked={form.confirmPublicGood}
+            onChange={(e) => update('confirmPublicGood', e.target.checked)}
+            type="checkbox"
+          />
+          <span>I confirm this work is submitted as a public-good registry entry and can be published instantly by the autonomous VQ Engine.</span>
         </label>
       </div>
     )
@@ -247,8 +324,10 @@ export default function SubmitQuest({ isAuthenticated }) {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">8-Step Quest</div>
-            <h2 className="text-3xl font-black text-ink">Step {stepIndex + 1}: {step.label}</h2>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">6-Step Quest</div>
+            <h2 className="text-3xl font-black text-ink">
+              Step {stepIndex + 1}: {step.label}
+            </h2>
           </div>
           <div className="rounded-full border-2 border-ink bg-butter px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-ink">
             No human review
@@ -256,7 +335,7 @@ export default function SubmitQuest({ isAuthenticated }) {
         </div>
         <ShimmerProgress value={progress} label={`Quest progress ${Math.round(progress)}%`} />
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/70">
-          {draftLoaded ? 'Draft autosave active' : 'Loading draft...'}
+          {draftLoaded ? 'Draft autosave active (text fields only)' : 'Loading draft...'}
         </div>
       </div>
 
@@ -268,20 +347,27 @@ export default function SubmitQuest({ isAuthenticated }) {
 
       <div className="space-y-5">
         {panels[step.id]}
-        {error ? <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">{error}</div> : null}
+        {error ? (
+          <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
+            {error}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap justify-between gap-3">
-        <TactileButton onClick={prevStep} variant="ghost" disabled={stepIndex === 0}>Back</TactileButton>
-        <div className="flex gap-3">
-          {stepIndex < QUEST_STEPS.length - 1 ? (
-            <TactileButton onClick={nextStep} variant="primary">Next Step</TactileButton>
-          ) : (
-            <TactileButton onClick={handleSubmit} variant="primary" disabled={!isAuthenticated || submitting}>
-              {submitting ? 'Publishing...' : 'Publish + Reveal VQ'}
-            </TactileButton>
-          )}
-        </div>
+        <TactileButton onClick={prevStep} variant="ghost" disabled={stepIndex === 0}>
+          Back
+        </TactileButton>
+
+        {stepIndex < QUEST_STEPS.length - 1 ? (
+          <TactileButton onClick={nextStep} variant="primary">
+            Next Step
+          </TactileButton>
+        ) : (
+          <TactileButton onClick={handleSubmit} variant="primary" disabled={!isAuthenticated || submitting}>
+            {submitting ? 'Publishing...' : 'Publish + Reveal VQ'}
+          </TactileButton>
+        )}
       </div>
     </div>
   );
