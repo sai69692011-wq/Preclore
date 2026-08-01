@@ -2,7 +2,65 @@ import './globals.css';
 import SiteHeader from '@/components/chrome/site-header';
 import SiteFooter from '@/components/chrome/site-footer';
 
-// ... (your metadata code stays in the middle) ...
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+export const metadata = {
+  metadataBase: new URL(siteUrl),
+
+  verification: {
+    google: 'gm9ICkXCJ55ZXRNCiasoLFF_lFdk7IAzbTglKsIdGWU'
+  },
+
+  title: {
+    default: 'Preclore v2.4 — Public Good Registry',
+    template: '%s | Preclore'
+  },
+
+  description:
+    'Preclore is a public-good registry for student-led systems research with instant deterministic VQ scoring, searchable journal pages, and direct mission support.',
+
+  keywords: [
+    'Preclore',
+    'student research',
+    'public good registry',
+    'systems research',
+    'VQ engine',
+    'research journal',
+    'field verified research'
+  ],
+
+  alternates: {
+    canonical: '/'
+  },
+
+  openGraph: {
+    title: 'Preclore v2.4 — Public Good Registry',
+    description:
+      'A game-like public research registry for student systems work, with instant VQ scoring and a searchable global research journal.',
+    url: siteUrl,
+    siteName: 'Preclore',
+    type: 'website'
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Preclore v2.4 — Public Good Registry',
+    description:
+      'Student-led systems research, instant VQ scoring, and a public-good journal.'
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1
+    }
+  }
+};
 
 export default function RootLayout({ children }) {
   return (
