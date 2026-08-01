@@ -28,22 +28,43 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
   }
 
+  const { data: existingProfile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const currentRole = existingProfile?.role || 'student';
+  const isStudent = currentRole === 'student';
+  const isMentor = currentRole === 'mentor';
+  const canStoreInstitutionFields = isStudent || isMentor;
+
   const displayName = normalizeText(body.display_name).slice(0, 80) || null;
   const username = sanitizeUsername(body.username, `researcher-${user.id.slice(0, 8)}`);
-  const schoolName = normalizeText(body.school_name).slice(0, 120) || null;
-  const gradeLevel = normalizeText(body.grade_level).slice(0, 120) || null;
+  const schoolName = canStoreInstitutionFields ? normalizeText(body.school_name).slice(0, 120) || null : null;
+  const gradeLevel = canStoreInstitutionFields ? normalizeText(body.grade_level).slice(0, 120) || null : null;
   const bio = normalizeText(body.bio).slice(0, 600) || null;
-  const birthYear = body.birth_year === '' || body.birth_year === null || body.birth_year === undefined
-    ? null
-    : Number(body.birth_year);
-  const upiId = normalizeText(body.parent_upi_id) || null;
+
+  const birthYear =
+    isStudent && body.birth_year !== '' && body.birth_year !== null && body.birth_year !== undefined
+      ? Number(body.birth_year)
+      : null;
+
+  const parentUpiId = isStudent ? normalizeText(body.parent_upi_id) || null : null;
   const currentYear = new Date().getFullYear();
 
-  if (birthYear !== null && (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)) {
+  if (displayName && displayName.length < 2) {
+    return NextResponse.json({ error: 'Display name must be at least 2 characters.' }, { status: 400 });
+  }
+
+  if (
+    birthYear !== null &&
+    (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)
+  ) {
     return NextResponse.json({ error: 'Invalid birth year.' }, { status: 400 });
   }
 
-  if (upiId && !isValidUpiId(upiId)) {
+  if (parentUpiId && !isValidUpiId(parentUpiId)) {
     return NextResponse.json({ error: 'Invalid parent UPI ID format.' }, { status: 400 });
   }
 
@@ -55,7 +76,7 @@ export async function POST(request) {
     grade_level: gradeLevel,
     bio,
     birth_year: birthYear,
-    parent_upi_id: upiId,
+    parent_upi_id: parentUpiId,
     updated_at: new Date().toISOString()
   };
 
