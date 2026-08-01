@@ -15,9 +15,11 @@ export default function ProfileForm({ initialProfile }) {
     grade_level: initialProfile?.grade_level || '',
     bio: initialProfile?.bio || '',
     parent_upi_id: initialProfile?.parent_upi_id || '',
-    birth_year: initialProfile?.birth_year ? String(initialProfile.birth_year) : ''
+    birth_year: initialProfile?.birth_year ? String(initialProfile.birth_year) : '',
+    avatar_url: initialProfile?.avatar_url || ''
   });
 
+  const [avatarFile, setAvatarFile] = useState(null);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -27,8 +29,8 @@ export default function ProfileForm({ initialProfile }) {
   );
 
   const isStudent = role === 'student';
-  const isMentor = role === 'mentor';
-  const showInstitutionFields = isStudent || isMentor;
+  const isMentorLike = role === 'mentor' || role === 'admin' || role === 'alumni_readonly';
+  const showInstitutionFields = isStudent || role === 'mentor';
   const showStudentFields = isStudent;
 
   const clientError = useMemo(() => {
@@ -52,7 +54,6 @@ export default function ProfileForm({ initialProfile }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     if (clientError) {
       setMessage(clientError);
       return;
@@ -61,20 +62,22 @@ export default function ProfileForm({ initialProfile }) {
     setSaving(true);
     setMessage('');
 
-    const payload = {
-      display_name: profile.display_name,
-      username: profile.username,
-      school_name: showInstitutionFields ? profile.school_name : '',
-      grade_level: showInstitutionFields ? profile.grade_level : '',
-      bio: profile.bio,
-      birth_year: showStudentFields ? profile.birth_year : '',
-      parent_upi_id: showStudentFields ? profile.parent_upi_id : ''
-    };
+    const payload = new FormData();
+    payload.append('display_name', profile.display_name);
+    payload.append('username', profile.username);
+    payload.append('school_name', showInstitutionFields ? profile.school_name : '');
+    payload.append('grade_level', showInstitutionFields ? profile.grade_level : '');
+    payload.append('bio', profile.bio);
+    payload.append('birth_year', showStudentFields ? profile.birth_year : '');
+    payload.append('parent_upi_id', showStudentFields ? profile.parent_upi_id : '');
+
+    if (avatarFile) {
+      payload.append('avatar', avatarFile);
+    }
 
     const response = await fetch('/api/profile', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: payload
     });
 
     const result = await response.json();
@@ -86,11 +89,13 @@ export default function ProfileForm({ initialProfile }) {
     setProfile((current) => ({ ...current, [field]: value }));
   }
 
+  function handleAvatarChange(event) {
+    const file = event.target.files?.[0] || null;
+    setAvatarFile(file);
+  }
+
   return (
-    <form
-      className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
-      onSubmit={handleSubmit}
-    >
+    <form className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]" onSubmit={handleSubmit}>
       <div>
         <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Researcher Profile</div>
         <h2 className="mt-2 text-2xl font-black text-ink">Set your public card</h2>
@@ -103,11 +108,7 @@ export default function ProfileForm({ initialProfile }) {
         <div className="font-black text-ink">Account mode</div>
         <p className="mt-1">
           Role: <strong>{role}</strong>
-          {access.age !== null ? (
-            <>
-              {' '}• Age: <strong>{access.age}</strong>
-            </>
-          ) : null}
+          {access.age !== null ? <> • Age: <strong>{access.age}</strong></> : null}
           {' '}• Access:{' '}
           <strong>
             {access.canSubmit
@@ -120,18 +121,23 @@ export default function ProfileForm({ initialProfile }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <input
-          className="field"
-          placeholder="Display name"
-          value={profile.display_name}
-          onChange={(e) => update('display_name', e.target.value)}
-        />
-        <input
-          className="field"
-          placeholder="Username"
-          value={profile.username}
-          onChange={(e) => update('username', e.target.value)}
-        />
+        <input className="field" placeholder="Display name" value={profile.display_name} onChange={(e) => update('display_name', e.target.value)} />
+        <input className="field" placeholder="Username" value={profile.username} onChange={(e) => update('username', e.target.value)} />
+      </div>
+
+      <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
+        <div className="text-sm font-black text-ink">Profile image / logo (optional)</div>
+        <p className="mt-1 text-sm text-ink/75">
+          {isStudent
+            ? 'Upload a profile photo if you want your journal card to show your identity.'
+            : isMentorLike
+              ? 'For mentors, reviewers, and institutional accounts, use a school crest, organization logo, or professional headshot.'
+              : 'Upload an image if you want a visible public profile card.'}
+        </p>
+        <input className="field mt-3" type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarChange} />
+        {profile.avatar_url ? (
+          <img src={profile.avatar_url} alt="Current profile" className="mt-3 h-20 w-20 rounded-full border-2 border-ink object-cover" />
+        ) : null}
       </div>
 
       {showInstitutionFields ? (
@@ -169,12 +175,7 @@ export default function ProfileForm({ initialProfile }) {
         </div>
       ) : null}
 
-      <textarea
-        className="field min-h-28"
-        placeholder="Bio / research focus"
-        value={profile.bio}
-        onChange={(e) => update('bio', e.target.value)}
-      />
+      <textarea className="field min-h-28" placeholder="Bio / research focus" value={profile.bio} onChange={(e) => update('bio', e.target.value)} />
 
       <div className="flex items-center gap-3">
         <TactileButton type="submit" disabled={saving || Boolean(clientError)} variant="primary">
