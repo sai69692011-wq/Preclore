@@ -6,6 +6,15 @@ import TierBadge from '@/components/ui/tier-badge';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/server';
 
+function InitialAvatar({ name }) {
+  const initial = String(name || '?').trim().charAt(0).toUpperCase() || '?';
+  return (
+    <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-ink bg-butter text-xl font-black text-ink">
+      {initial}
+    </div>
+  );
+}
+
 export default async function ProjectPage({ params }) {
   const { slug } = await params;
   const supabase = await createClient();
@@ -16,6 +25,7 @@ export default async function ProjectPage({ params }) {
   const { data: projectRows } = await supabase.rpc('get_public_project_detail', {
     project_slug: slug
   });
+
   const project = projectRows?.[0] || null;
 
   if (!project) {
@@ -52,52 +62,100 @@ export default async function ProjectPage({ params }) {
           </div>
           <TierBadge tier={project.tier} />
         </div>
-        <h1 className="mt-5 text-4xl font-black text-ink">{project.title}</h1>
-        <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-ink/70">
-          <span>{project.researcher_name}</span>
-          <span>•</span>
-          <span>{project.researcher_school || 'Independent researcher'}</span>
-          <span>•</span>
-          <span>{project.region_label}</span>
-          <span>•</span>
-          <span>VQ {project.vq_score}</span>
+
+        <div className="mt-5 flex items-center gap-4">
+          {project.researcher_avatar_url ? (
+            <img
+              src={project.researcher_avatar_url}
+              alt={project.researcher_name}
+              className="h-16 w-16 rounded-full border-2 border-ink object-cover"
+            />
+          ) : (
+            <InitialAvatar name={project.researcher_name} />
+          )}
+
+          <div>
+            <h1 className="text-4xl font-black text-ink">{project.title}</h1>
+            <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-ink/70">
+              <span>{project.researcher_name}</span>
+              {project.researcher_school ? (
+                <>
+                  <span>•</span>
+                  <span>{project.researcher_school}</span>
+                </>
+              ) : null}
+              {project.region_label ? (
+                <>
+                  <span>•</span>
+                  <span>{project.region_label}</span>
+                </>
+              ) : null}
+              <span>•</span>
+              <span>VQ {project.vq_score}</span>
+            </div>
+          </div>
         </div>
 
         <section className="mt-8 space-y-6">
           <div>
-            <h2 className="text-xl font-black text-ink">Observation</h2>
+            <h2 className="text-xl font-black text-ink">Abstract</h2>
             <p className="mt-2 text-sm leading-7 text-ink/80">{project.summary}</p>
           </div>
-          <div>
-            <h2 className="text-xl font-black text-ink">Problem Statement</h2>
-            <p className="mt-2 text-sm leading-7 text-ink/80">{project.problem_statement}</p>
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-ink">Hypothesis</h2>
-            <p className="mt-2 text-sm leading-7 text-ink/80">{project.hypothesis}</p>
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-ink">Methodology</h2>
-            <p className="mt-2 text-sm leading-7 text-ink/80">{project.methodology}</p>
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-ink">Systems Impact</h2>
-            <p className="mt-2 text-sm leading-7 text-ink/80">{project.systems_impact}</p>
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-ink">Public Good Case</h2>
-            <p className="mt-2 text-sm leading-7 text-ink/80">{project.public_good_case}</p>
-          </div>
+
+          {project.pdf_url ? (
+            <div>
+              <h2 className="text-xl font-black text-ink">Project PDF</h2>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <TactileButton href={project.pdf_url} variant="primary" target="_blank">
+                  Open PDF
+                </TactileButton>
+                {project.pdf_filename ? (
+                  <div className="rounded-2xl border-2 border-ink bg-white/70 px-4 py-3 text-sm font-semibold text-ink">
+                    {project.pdf_filename}
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-4 overflow-hidden rounded-[24px] border-2 border-ink bg-white/70">
+                <iframe
+                  title="Project PDF preview"
+                  src={project.pdf_url}
+                  className="h-[600px] w-full"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {project.systems_impact ? (
+            <div>
+              <h2 className="text-xl font-black text-ink">Systems Impact</h2>
+              <p className="mt-2 text-sm leading-7 text-ink/80">{project.systems_impact}</p>
+            </div>
+          ) : null}
+
+          {project.public_good_case ? (
+            <div>
+              <h2 className="text-xl font-black text-ink">Public Good Case</h2>
+              <p className="mt-2 text-sm leading-7 text-ink/80">{project.public_good_case}</p>
+            </div>
+          ) : null}
+
           <div>
             <h2 className="text-xl font-black text-ink">Evidence & Citations</h2>
             <div className="mt-3 space-y-2 text-sm leading-7 text-ink/80">
               {(project.evidence_urls || []).length ? (
                 <ul className="list-disc pl-5">
                   {project.evidence_urls.map((url) => (
-                    <li key={url}><a className="underline" href={url} rel="noreferrer" target="_blank">{url}</a></li>
+                    <li key={url}>
+                      <a className="underline" href={url} rel="noreferrer" target="_blank">
+                        {url}
+                      </a>
+                    </li>
                   ))}
                 </ul>
-              ) : <p>No external evidence links attached.</p>}
+              ) : (
+                <p>No external evidence links attached.</p>
+              )}
+
               <p><strong>Citations:</strong> {project.citations || 'Not provided'}</p>
               <p><strong>Reproducibility:</strong> {project.reproducibility_note || 'Not provided'}</p>
             </div>
@@ -110,7 +168,7 @@ export default async function ProjectPage({ params }) {
           <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Registry Rules</div>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-ink/80">
             <li>• Registry-only platform with deterministic instant publication.</li>
-            <li>• Voluntary mission support is separate from researcher support.</li>
+            <li>• Proof and context fields are optional but can improve the VQ score.</li>
             <li>• Eligible researcher support routes directly to the parental buffer UPI.</li>
           </ul>
         </div>
@@ -133,14 +191,24 @@ export default async function ProjectPage({ params }) {
               </p>
               {user ? (
                 user.id === project.researcher_id ? (
-                  <div className="mt-4 text-sm font-semibold text-ink/75">Add your parent UPI ID on the Profile page to enable direct support.</div>
+                  <div className="mt-4 text-sm font-semibold text-ink/75">
+                    Add your parent UPI ID on the Profile page to enable direct support.
+                  </div>
                 ) : viewerAccess?.canRequestProtectedSupport ? (
-                  <div className="mt-4"><FollowRequestButton researcherId={project.researcher_id} /></div>
+                  <div className="mt-4">
+                    <FollowRequestButton researcherId={project.researcher_id} />
+                  </div>
                 ) : (
-                  <div className="mt-4 text-sm font-semibold text-ink/75">Only mentor/admin accounts can request protected support access.</div>
+                  <div className="mt-4 text-sm font-semibold text-ink/75">
+                    Only mentor/admin accounts can request protected support access.
+                  </div>
                 )
               ) : (
-                <div className="mt-4"><TactileButton href={`/auth?next=/project/${project.slug}`} variant="primary">Sign in to request access</TactileButton></div>
+                <div className="mt-4">
+                  <TactileButton href={`/auth?next=/project/${project.slug}`} variant="primary">
+                    Sign in to request access
+                  </TactileButton>
+                </div>
               )}
             </div>
           )
