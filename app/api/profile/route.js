@@ -12,11 +12,26 @@ function sanitizeUsername(value, fallback) {
   return cleaned || fallback;
 }
 
-function safeFilename(name = 'avatar') {
+function safeFilename(name = 'file') {
   return String(name)
     .toLowerCase()
     .replace(/[^a-z0-9.-]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+function deriveVerificationKind(role) {
+  if (role === 'student') return 'student_id';
+  if (role === 'mentor') return 'staff_id';
+  return 'reviewer_id';
+}
+
+function allowedVerificationMime(file) {
+  return [
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'application/pdf'
+  ].includes(file.type);
 }
 
 export async function POST(request) {
@@ -33,23 +48,26 @@ export async function POST(request) {
 
   const { data: existingProfile } = await supabase
     .from('users')
-    .select('role, avatar_url')
+    .select(
+      'role, avatar_url, verification_status, verification_kind, institution_id_ref, verification_doc_path'
+    )
     .eq('id', user.id)
     .maybeSingle();
 
   const currentRole = existingProfile?.role || 'student';
   const isStudent = currentRole === 'student';
-  const isMentor = currentRole === 'mentor';
-  const canStoreInstitutionFields = isStudent || isMentor;
 
   const displayName = normalizeText(formData.get('display_name')).slice(0, 80) || null;
   const username = sanitizeUsername(formData.get('username'), `researcher-${user.id.slice(0, 8)}`);
-  const schoolName = canStoreInstitutionFields ? normalizeText(formData.get('school_name')).slice(0, 120) || null : null;
-  const gradeLevel = canStoreInstitutionFields ? normalizeText(formData.get('grade_level')).slice(0, 120) || null : null;
+  const schoolName = normalizeText(formData.get('school_name')).slice(0, 120) || null;
+  const gradeLevel = normalizeText(formData.get('grade_level')).slice(0, 120) || null;
   const bio = normalizeText(formData.get('bio')).slice(0, 600) || null;
   const birthYear = isStudent && formData.get('birth_year') ? Number(formData.get('birth_year')) : null;
   const parentUpiId = isStudent ? normalizeText(formData.get('parent_upi_id')) || null : null;
+
+  const submittedInstitutionId = normalizeText(formData.get('institution_id_ref')).slice(0, 120);
   const avatar = formData.get('avatar');
+  const verificationDoc = formData.get('verification_doc');
   const currentYear = new Date().getFullYear();
 
   if (displayName && displayName.length < 2) {
@@ -87,6 +105,44 @@ export async function POST(request) {
     avatarUrl = publicUrl;
   }
 
+  let verificationStatus = existingProfile?.verification_status || 'unverified';
+  let verificationKind = existingProfile?.verification_kind || null;
+  let institutionIdRef = existingProfile?.institution_id_ref || null;
+  let verificationDocPath = existingProfile?.verification_doc_path || null;
+
+  if (submittedInstitutionId) {
+    institutionIdRef = submittedInstitutionId;
+  }
+
+  if (verificationDoc instanceof File && verificationDoc.size > 0) {
+    if (!allowedVerificationMime(verificationDoc)) {
+      return NextResponse.json({ error: 'Verification proof must be an image or PDF.' }, { status: 400 });
+    }
+
+    const verificationPath = `${user.id}/${Date.now()}-${safeFilename(verificationDoc.name || 'verification')}`;
+    const uploadResult = await supabase.storage
+      .from('verification-docs')
+      .upload(verificationPath, verificationDoc, {
+        contentType: verificationDoc.type || 'application/pdf',
+        upsert: false
+      });
+
+    if (uploadResult.error) {
+      return NextResponse.json({ error: uploadResult.error.message }, { status: 400 });
+    }
+
+    verificationDocPath = verificationPath;
+  }
+
+  const verificationSubmitted =
+    Boolean(submittedInstitutionId) ||
+    (verificationDoc instanceof File && verificationDoc.size > 0);
+
+  if (verificationSubmitted) {
+    verificationStatus = 'pending';
+    verificationKind = deriveVerificationKind(currentRole);
+  }
+
   const payload = {
     id: user.id,
     display_name: displayName,
@@ -97,6 +153,11 @@ export async function POST(request) {
     birth_year: birthYear,
     parent_upi_id: parentUpiId,
     avatar_url: avatarUrl,
+    institution_name: schoolName,
+    institution_id_ref: institutionIdRef,
+    verification_kind: verificationKind,
+    verification_status: verificationStatus,
+    verification_doc_path: verificationDocPath,
     updated_at: new Date().toISOString()
   };
 
@@ -106,5 +167,8 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ message: 'Profile saved.' });
+  return NextResponse.json({
+    message: 'Profile saved.',
+    verificationStatus
+  });
 }
