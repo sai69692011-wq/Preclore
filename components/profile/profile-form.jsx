@@ -5,6 +5,27 @@ import TactileButton from '@/components/ui/tactile-button';
 import { deriveAccessProfile } from '@/lib/access';
 import { isValidUpiId, normalizeText } from '@/lib/utils';
 
+function verificationLabel(role, status) {
+  if (status === 'verified') {
+    if (role === 'student') return 'Verified Student';
+    if (role === 'mentor') return 'Verified Mentor';
+    return 'Verified Reviewer';
+  }
+
+  if (status === 'pending') return 'Verification Pending';
+  if (status === 'rejected') return 'Verification Rejected';
+  if (status === 'expired') return 'Verification Expired';
+  return 'Unverified';
+}
+
+function verificationTone(status) {
+  if (status === 'verified') return 'bg-mint border-ink text-ink';
+  if (status === 'pending') return 'bg-butter border-ink text-ink';
+  if (status === 'rejected') return 'bg-peach border-ink text-ink';
+  if (status === 'expired') return 'bg-lilac border-ink text-ink';
+  return 'bg-white/70 border-ink/30 text-ink/70';
+}
+
 export default function ProfileForm({ initialProfile }) {
   const role = initialProfile?.role || 'student';
 
@@ -16,10 +37,13 @@ export default function ProfileForm({ initialProfile }) {
     bio: initialProfile?.bio || '',
     parent_upi_id: initialProfile?.parent_upi_id || '',
     birth_year: initialProfile?.birth_year ? String(initialProfile.birth_year) : '',
-    avatar_url: initialProfile?.avatar_url || ''
+    avatar_url: initialProfile?.avatar_url || '',
+    institution_id_ref: initialProfile?.institution_id_ref || '',
+    verification_status: initialProfile?.verification_status || 'unverified'
   });
 
   const [avatarFile, setAvatarFile] = useState(null);
+  const [verificationFile, setVerificationFile] = useState(null);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -29,8 +53,9 @@ export default function ProfileForm({ initialProfile }) {
   );
 
   const isStudent = role === 'student';
-  const isMentorLike = role === 'mentor' || role === 'admin' || role === 'alumni_readonly';
-  const showInstitutionFields = isStudent || role === 'mentor';
+  const isMentor = role === 'mentor';
+  const isReviewerLike = role === 'alumni_readonly' || role === 'admin';
+  const showInstitutionFields = true;
   const showStudentFields = isStudent;
 
   const clientError = useMemo(() => {
@@ -66,13 +91,18 @@ export default function ProfileForm({ initialProfile }) {
     payload.append('display_name', profile.display_name);
     payload.append('username', profile.username);
     payload.append('school_name', showInstitutionFields ? profile.school_name : '');
-    payload.append('grade_level', showInstitutionFields ? profile.grade_level : '');
+    payload.append('grade_level', profile.grade_level);
     payload.append('bio', profile.bio);
     payload.append('birth_year', showStudentFields ? profile.birth_year : '');
     payload.append('parent_upi_id', showStudentFields ? profile.parent_upi_id : '');
+    payload.append('institution_id_ref', profile.institution_id_ref);
 
     if (avatarFile) {
       payload.append('avatar', avatarFile);
+    }
+
+    if (verificationFile) {
+      payload.append('verification_doc', verificationFile);
     }
 
     const response = await fetch('/api/profile', {
@@ -82,6 +112,14 @@ export default function ProfileForm({ initialProfile }) {
 
     const result = await response.json();
     setSaving(false);
+
+    if (result.verificationStatus) {
+      setProfile((current) => ({
+        ...current,
+        verification_status: result.verificationStatus
+      }));
+    }
+
     setMessage(result.error || result.message || 'Saved.');
   }
 
@@ -94,8 +132,16 @@ export default function ProfileForm({ initialProfile }) {
     setAvatarFile(file);
   }
 
+  function handleVerificationFileChange(event) {
+    const file = event.target.files?.[0] || null;
+    setVerificationFile(file);
+  }
+
   return (
-    <form className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]" onSubmit={handleSubmit}>
+    <form
+      className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
+      onSubmit={handleSubmit}
+    >
       <div>
         <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Researcher Profile</div>
         <h2 className="mt-2 text-2xl font-black text-ink">Set your public card</h2>
@@ -120,9 +166,38 @@ export default function ProfileForm({ initialProfile }) {
         </p>
       </div>
 
+      <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
+        <div className="text-sm font-black text-ink">Verification status</div>
+        <div
+          className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.2em] ${verificationTone(
+            profile.verification_status
+          )}`}
+        >
+          {verificationLabel(role, profile.verification_status)}
+        </div>
+
+        <p className="mt-3 text-sm text-ink/75">
+          {isStudent
+            ? 'Optional: upload a school/student ID for verification. Previous-year ID is acceptable if it clearly matches the same name and institution.'
+            : isMentor
+              ? 'Optional: upload a work/institution ID for verification.'
+              : 'Optional: upload institutional or reviewer proof for verification.'}
+        </p>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
-        <input className="field" placeholder="Display name" value={profile.display_name} onChange={(e) => update('display_name', e.target.value)} />
-        <input className="field" placeholder="Username" value={profile.username} onChange={(e) => update('username', e.target.value)} />
+        <input
+          className="field"
+          placeholder="Display name"
+          value={profile.display_name}
+          onChange={(e) => update('display_name', e.target.value)}
+        />
+        <input
+          className="field"
+          placeholder="Username"
+          value={profile.username}
+          onChange={(e) => update('username', e.target.value)}
+        />
       </div>
 
       <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
@@ -130,13 +205,20 @@ export default function ProfileForm({ initialProfile }) {
         <p className="mt-1 text-sm text-ink/75">
           {isStudent
             ? 'Upload a profile photo if you want your journal card to show your identity.'
-            : isMentorLike
-              ? 'For mentors, reviewers, and institutional accounts, use a school crest, organization logo, or a clear profile photo.'
-              : 'Upload an image if you want a visible public profile card.'}
+            : 'For mentors, reviewers, and institutional accounts, use a school crest, organization logo, or a clear profile photo.'}
         </p>
-        <input className="field mt-3" type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarChange} />
+        <input
+          className="field mt-3"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={handleAvatarChange}
+        />
         {profile.avatar_url ? (
-          <img src={profile.avatar_url} alt="Current profile" className="mt-3 h-20 w-20 rounded-full border-2 border-ink object-cover" />
+          <img
+            src={profile.avatar_url}
+            alt="Current profile"
+            className="mt-3 h-20 w-20 rounded-full border-2 border-ink object-cover"
+          />
         ) : null}
       </div>
 
@@ -157,6 +239,21 @@ export default function ProfileForm({ initialProfile }) {
         </div>
       ) : null}
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <input
+          className="field"
+          placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
+          value={profile.institution_id_ref}
+          onChange={(e) => update('institution_id_ref', e.target.value)}
+        />
+        <input
+          className="field"
+          type="file"
+          accept="image/png,image/jpeg,image/webp,application/pdf"
+          onChange={handleVerificationFileChange}
+        />
+      </div>
+
       {showStudentFields ? (
         <div className="grid gap-4 md:grid-cols-2">
           <input
@@ -175,7 +272,12 @@ export default function ProfileForm({ initialProfile }) {
         </div>
       ) : null}
 
-      <textarea className="field min-h-28" placeholder="Bio / research focus" value={profile.bio} onChange={(e) => update('bio', e.target.value)} />
+      <textarea
+        className="field min-h-28"
+        placeholder="Bio / research focus"
+        value={profile.bio}
+        onChange={(e) => update('bio', e.target.value)}
+      />
 
       <div className="flex items-center gap-3">
         <TactileButton type="submit" disabled={saving || Boolean(clientError)} variant="primary">
