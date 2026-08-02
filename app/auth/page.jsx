@@ -312,11 +312,17 @@ export default function AuthPage() {
         {isSignUp ? (
           <p className="mt-4 text-center text-xs text-ink/70">
             By signing up, you agree to our{' '}
-            <Link href="/terms" className="underline font-semibold hover:opacity-80 transition-opacity">
+            <Link
+              href="/terms"
+              className="underline font-semibold transition-colors hover:text-coral"
+            >
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="underline font-semibold hover:opacity-80 transition-opacity">
+            <Link
+              href="/privacy"
+              className="underline font-semibold transition-colors hover:text-coral"
+            >
               Privacy Policy
             </Link>
             .
@@ -342,7 +348,7 @@ export default function AuthPage() {
             setError('');
             setMessage('');
           }}
-          className="text-sm font-semibold underline hover:opacity-80 transition-opacity"
+          className="text-sm font-semibold underline transition-colors hover:text-coral"
         >
           {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
         </button>
