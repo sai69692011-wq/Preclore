@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { deriveAccessProfile } from '@/lib/access';
 import { PROJECT_TAG_COMPAT } from '@/lib/constants';
+import { readJsonObject } from '@/lib/request';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeText, slugify, splitEvidence } from '@/lib/utils';
 import { scoreProject } from '@/lib/vq-engine';
@@ -9,11 +10,13 @@ function canonicalProjectTag(projectTag) {
   return projectTag === 'Needs Funding' ? 'Project: Needs Funding' : projectTag;
 }
 
-function safeFilename(name = 'submission.pdf') {
-  return String(name)
-    .toLowerCase()
-    .replace(/[^a-z0-9.-]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+function isHttpUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request) {
@@ -26,38 +29,55 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Please sign in before publishing.' }, { status: 401 });
   }
 
-  const formData = await request.formData();
-
-  const title = normalizeText(formData.get('title')).slice(0, 160);
-  const regionLabel = normalizeText(formData.get('regionLabel')).slice(0, 120);
-  const summary = normalizeText(formData.get('summary')).slice(0, 4000);
-  const evidenceUrlsRaw = String(formData.get('evidenceUrls') || '').slice(0, 4000);
-  const citations = normalizeText(formData.get('citations')).slice(0, 2000);
-  const systemsImpact = normalizeText(formData.get('systemsImpact')).slice(0, 2000);
-  const publicGoodCase = normalizeText(formData.get('publicGoodCase')).slice(0, 2000);
-  const reproducibilityNote = normalizeText(formData.get('reproducibilityNote')).slice(0, 2000);
-  const projectTag = canonicalProjectTag(formData.get('projectTag'));
-  const confirmPublicGood = String(formData.get('confirmPublicGood')) === 'true';
-  const pdf = formData.get('pdf');
-
-  if (!confirmPublicGood) {
-    return NextResponse.json({ error: 'Public-good publication confirmation is required.' }, { status: 400 });
+  const body = await readJsonObject(request);
+  if (!body) {
+    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
   }
 
-  if (!PROJECT_TAG_COMPAT.includes(projectTag)) {
+  if (body.confirmPublicGood !== true) {
+    return NextResponse.json(
+      { error: 'Public-good publication confirmation is required.' },
+      { status: 400 }
+    );
+  }
+
+  if (!PROJECT_TAG_COMPAT.includes(body.projectTag)) {
     return NextResponse.json({ error: 'Invalid project tag.' }, { status: 400 });
   }
 
-  if (!title || !summary) {
-    return NextResponse.json({ error: 'Title and project abstract are required.' }, { status: 400 });
+  const projectDocumentUrl = normalizeText(body.projectDocumentUrl).slice(0, 2000);
+
+  if (projectDocumentUrl && !isHttpUrl(projectDocumentUrl)) {
+    return NextResponse.json({ error: 'Project document link must be a valid public URL.' }, { status: 400 });
   }
 
-  if (!(pdf instanceof File) || pdf.size === 0) {
-    return NextResponse.json({ error: 'A PDF upload is required.' }, { status: 400 });
+  const normalized = {
+    title: normalizeText(body.title).slice(0, 160),
+    regionLabel: normalizeText(body.regionLabel).slice(0, 120),
+    summary: normalizeText(body.summary).slice(0, 4000),
+    projectDocumentUrl,
+    evidenceUrls: String(body.evidenceUrls || '').slice(0, 4000),
+    citations: normalizeText(body.citations).slice(0, 2000),
+    systemsImpact: normalizeText(body.systemsImpact).slice(0, 2000),
+    publicGoodCase: normalizeText(body.publicGoodCase).slice(0, 2000),
+    reproducibilityNote: normalizeText(body.reproducibilityNote).slice(0, 2000),
+    projectTag: canonicalProjectTag(body.projectTag),
+    confirmPublicGood: true,
+    aiRiskFlag: body.aiRiskFlag === true
+  };
+
+  const required = ['title', 'summary', 'projectTag'];
+  const missing = required.find((field) => !normalized[field]);
+
+  if (missing) {
+    return NextResponse.json({ error: `Missing required field: ${missing}` }, { status: 400 });
   }
 
-  if (pdf.type !== 'application/pdf') {
-    return NextResponse.json({ error: 'Only PDF uploads are supported.' }, { status: 400 });
+  const evidenceUrls = splitEvidence(normalized.evidenceUrls);
+  const invalidEvidenceUrl = evidenceUrls.find((url) => !isHttpUrl(url));
+
+  if (invalidEvidenceUrl) {
+    return NextResponse.json({ error: `Invalid evidence URL: ${invalidEvidenceUrl}` }, { status: 400 });
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -86,39 +106,9 @@ export async function POST(request) {
     );
   }
 
-  const pdfPath = `${user.id}/${Date.now()}-${safeFilename(pdf.name || 'project.pdf')}`;
-  const uploadResult = await supabase.storage.from('project-pdfs').upload(pdfPath, pdf, {
-    contentType: 'application/pdf',
-    upsert: false
-  });
-
-  if (uploadResult.error) {
-    return NextResponse.json({ error: uploadResult.error.message }, { status: 400 });
-  }
-
-  const {
-    data: { publicUrl: pdfUrl }
-  } = supabase.storage.from('project-pdfs').getPublicUrl(pdfPath);
-
-  const normalized = {
-    title,
-    regionLabel,
-    summary,
-    evidenceUrls: evidenceUrlsRaw,
-    citations,
-    systemsImpact,
-    publicGoodCase,
-    reproducibilityNote,
-    projectTag,
-    pdfFilename: pdf.name,
-    pdfUrl,
-    confirmPublicGood: true
-  };
-
   const score = scoreProject(normalized);
-  const baseSlug = slugify(title) || 'research-project';
+  const baseSlug = slugify(normalized.title) || 'research-project';
   const slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
-  const evidenceUrls = splitEvidence(evidenceUrlsRaw).slice(0, 20);
 
   const payload = {
     researcher_id: user.id,
@@ -126,21 +116,21 @@ export async function POST(request) {
     researcher_school: profile?.school_name || null,
     researcher_avatar_url: profile?.avatar_url || null,
     slug,
-    title,
-    summary,
+    title: normalized.title,
+    summary: normalized.summary,
     problem_statement: null,
     hypothesis: null,
     methodology: null,
-    evidence_urls: evidenceUrls,
-    region_label: regionLabel || null,
-    systems_impact: systemsImpact || null,
-    public_good_case: publicGoodCase || null,
-    reproducibility_note: reproducibilityNote || null,
-    citations: citations || null,
-    project_tag: projectTag,
-    pdf_path: pdfPath,
-    pdf_url: pdfUrl,
-    pdf_filename: pdf.name,
+    evidence_urls: evidenceUrls.slice(0, 20),
+    region_label: normalized.regionLabel || null,
+    systems_impact: normalized.systemsImpact || null,
+    public_good_case: normalized.publicGoodCase || null,
+    reproducibility_note: normalized.reproducibilityNote || null,
+    citations: normalized.citations || null,
+    project_tag: normalized.projectTag,
+    pdf_path: null,
+    pdf_url: normalized.projectDocumentUrl || null,
+    pdf_filename: null,
     vq_score: score.total,
     tier: score.tier,
     vq_breakdown: {
