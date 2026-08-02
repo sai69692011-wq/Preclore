@@ -131,7 +131,7 @@ export default function ProfileForm({ initialProfile }) {
           {isStudent
             ? 'Upload a profile photo if you want your journal card to show your identity.'
             : isMentorLike
-              ? 'For mentors, reviewers, and institutional accounts, use a school crest, organization logo, or professional headshot.'
+              ? 'For mentors, reviewers, and institutional accounts, use a school crest, organization logo, or a clear profile photo.'
               : 'Upload an image if you want a visible public profile card.'}
         </p>
         <input className="field mt-3" type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarChange} />
