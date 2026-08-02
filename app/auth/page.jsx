@@ -76,13 +76,21 @@ export default function AuthPage() {
   async function ensureProfileRow(user, profileInput = {}) {
     if (!user?.id) return;
 
-    await supabase.from('users').upsert({
+    const payload = {
       id: user.id,
       username: `researcher-${user.id.slice(0, 8)}`,
-      display_name: normalizeText(profileInput.fullName) || null,
-      role: normalizeRole(profileInput.role),
       updated_at: new Date().toISOString()
-    });
+    };
+
+    if (profileInput.fullName !== undefined) {
+      payload.display_name = normalizeText(profileInput.fullName) || null;
+    }
+
+    if (profileInput.role !== undefined) {
+      payload.role = normalizeRole(profileInput.role);
+    }
+
+    await supabase.from('users').upsert(payload);
   }
 
   async function handleAuth(event) {
@@ -304,11 +312,11 @@ export default function AuthPage() {
         {isSignUp ? (
           <p className="mt-4 text-center text-xs text-ink/70">
             By signing up, you agree to our{' '}
-            <Link href="/terms" className="underline font-semibold hover:text-coral">
+            <Link href="/terms" className="underline font-semibold hover:opacity-80 transition-opacity">
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="underline font-semibold hover:text-coral">
+            <Link href="/privacy" className="underline font-semibold hover:opacity-80 transition-opacity">
               Privacy Policy
             </Link>
             .
@@ -334,7 +342,7 @@ export default function AuthPage() {
             setError('');
             setMessage('');
           }}
-          className="text-sm font-semibold underline hover:text-coral"
+          className="text-sm font-semibold underline hover:opacity-80 transition-opacity"
         >
           {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
         </button>
