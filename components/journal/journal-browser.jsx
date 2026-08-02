@@ -76,10 +76,11 @@ export default function JournalBrowser({ projects }) {
                 <div className="rounded-full border border-ink/20 bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-forest">
                   {project.project_tag}
                 </div>
+
                 <div className="flex items-center gap-2">
                   {project.pdf_url ? (
                     <span className="rounded-full border border-ink/20 bg-lilac px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-ink">
-                      PDF
+                      DOC LINK
                     </span>
                   ) : null}
                   <TierBadge tier={project.tier} className="scale-90" />
@@ -113,7 +114,7 @@ export default function JournalBrowser({ projects }) {
                 {project.pdf_url ? (
                   <>
                     <span>•</span>
-                    <span>Open full PDF on project page</span>
+                    <span>Open project document on project page</span>
                   </>
                 ) : null}
               </div>
