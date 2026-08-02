@@ -7,10 +7,6 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 export const metadata = {
   metadataBase: new URL(siteUrl),
 
-  verification: {
-    google: 'gm9ICkXCJ55ZXRNCiasoLFF_lFdk7IAzbTglKsIdGWU'
-  },
-
   title: {
     default: 'Preclore v2.4 — Public Good Registry',
     template: '%s | Preclore'
@@ -18,6 +14,18 @@ export const metadata = {
 
   description:
     'Preclore is a public-good registry for student-led systems research with instant deterministic VQ scoring, searchable journal pages, and direct mission support.',
+
+  verification: {
+    google: 'gm9ICkXCJ55ZXRNCiasoLFF_lFdk7IAzbTglKsIdGWU'
+  },
+
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png' }
+    ],
+    apple: '/apple-icon.png'
+  },
 
   keywords: [
     'Preclore',
@@ -39,14 +47,23 @@ export const metadata = {
       'A game-like public research registry for student systems work, with instant VQ scoring and a searchable global research journal.',
     url: siteUrl,
     siteName: 'Preclore',
-    type: 'website'
+    type: 'website',
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Preclore Public Good Registry'
+      }
+    ]
   },
 
   twitter: {
     card: 'summary_large_image',
     title: 'Preclore v2.4 — Public Good Registry',
     description:
-      'Student-led systems research, instant VQ scoring, and a public-good journal.'
+      'Student-led systems research, instant VQ scoring, and a public-good journal.',
+    images: ['/opengraph-image.png']
   },
 
   robots: {
@@ -60,6 +77,10 @@ export const metadata = {
       'max-snippet': -1
     }
   }
+};
+
+export const viewport = {
+  themeColor: '#2c2b2a'
 };
 
 export default function RootLayout({ children }) {
