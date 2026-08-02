@@ -31,7 +31,15 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-ink">3. Financial Facilitation</h2>
+          <h2 className="text-xl font-black text-ink">3. Verification Badges</h2>
+          <p className="mt-2">
+            Verified badges are optional identity trust indicators based on platform review of submitted verification information.
+            A verified badge does not constitute certification, legal endorsement, academic accreditation, or admissions preference.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-black text-ink">4. Financial Facilitation</h2>
           <p className="mt-2">
             Preclore is a registry platform and does not hold, process, or disburse funds directly.
             Any support transfer is conducted independently outside Preclore.
