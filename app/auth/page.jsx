@@ -17,7 +17,6 @@ function isValidPassword(password) {
 
 function normalizeRole(role) {
   if (role === 'student') return 'student';
-  if (role === 'mentor') return 'mentor';
   if (role === 'alumni_readonly') return 'alumni_readonly';
   return 'student';
 }
@@ -31,7 +30,6 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('student');
-  const [marketingConsent, setMarketingConsent] = useState(true);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
@@ -114,8 +112,7 @@ export default function AuthPage() {
         options: {
           data: {
             full_name: normalizeText(fullName),
-            role: normalizeRole(role),
-            marketing_opt_in: marketingConsent
+            role: normalizeRole(role)
           }
         }
       });
@@ -258,7 +255,6 @@ export default function AuthPage() {
                 className="field"
               >
                 <option value="student">Student</option>
-                <option value="mentor">Teacher / Mentor</option>
                 <option value="alumni_readonly">Guest / Independent Viewer</option>
               </select>
             </div>
@@ -306,32 +302,17 @@ export default function AuthPage() {
         ) : null}
 
         {isSignUp ? (
-          <>
-            <div className="flex items-start gap-2 pt-2">
-              <input
-                type="checkbox"
-                id="marketing"
-                checked={marketingConsent}
-                onChange={(event) => setMarketingConsent(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-2 border-ink accent-ink"
-              />
-              <label htmlFor="marketing" className="text-xs leading-snug text-ink/80">
-                I agree to receive updates, research roundups, and platform announcements regarding Preclore.
-              </label>
-            </div>
-
-            <p className="mt-4 text-center text-xs text-ink/70">
-              By signing up, you agree to our{' '}
-              <Link href="/terms" className="underline font-semibold hover:text-coral">
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link href="/privacy" className="underline font-semibold hover:text-coral">
-                Privacy Policy
-              </Link>
-              .
-            </p>
-          </>
+          <p className="mt-4 text-center text-xs text-ink/70">
+            By signing up, you agree to our{' '}
+            <Link href="/terms" className="underline font-semibold hover:text-coral">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="underline font-semibold hover:text-coral">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         ) : null}
 
         <div className="flex flex-wrap gap-3">
