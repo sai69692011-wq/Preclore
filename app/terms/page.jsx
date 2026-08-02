@@ -17,20 +17,24 @@ export default function TermsPage() {
             Preclore is a public-interest academic research registry and facilitation platform.
             We provide deterministic educational signals, including the Verification Quotient (VQ)
             Score and Tier Badge, based on submitted inputs and platform logic.
+            These signals are educational indicators only and do not constitute certification,
+            endorsement, funding approval, admissions preference, academic guarantee, or legal verification.
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-black text-ink">2. Submission Standards</h2>
           <p className="mt-2">
-            Users must submit original work or work they are authorized to publish and ensure appropriate participant consent where applicable.
+            Users must submit original work or work they are authorized to publish and ensure appropriate
+            participant consent where applicable.
           </p>
         </section>
 
         <section>
           <h2 className="text-xl font-black text-ink">3. Financial Facilitation</h2>
           <p className="mt-2">
-            Preclore is a registry platform and does not hold, process, or disburse funds directly. Any support transfer is conducted independently outside Preclore.
+            Preclore is a registry platform and does not hold, process, or disburse funds directly.
+            Any support transfer is conducted independently outside Preclore.
           </p>
         </section>
       </div>
