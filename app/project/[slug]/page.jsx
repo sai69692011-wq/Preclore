@@ -15,6 +15,13 @@ function InitialAvatar({ name }) {
   );
 }
 
+function verificationLabel(role, status) {
+  if (status !== 'verified') return null;
+  if (role === 'student') return 'Verified Student';
+  if (role === 'mentor') return 'Verified Mentor';
+  return 'Verified Reviewer';
+}
+
 export default async function ProjectPage({ params }) {
   const { slug } = await params;
   const supabase = await createClient();
@@ -33,6 +40,11 @@ export default async function ProjectPage({ params }) {
   }
 
   const needsFunding = ['Project: Needs Funding', 'Needs Funding'].includes(project.project_tag);
+  const verificationBadge = verificationLabel(
+    project.researcher_role,
+    project.researcher_verification_status
+  );
+
   let connectedParentUpi = null;
   let viewerAccess = null;
 
@@ -78,10 +90,10 @@ export default async function ProjectPage({ params }) {
             <h1 className="text-4xl font-black text-ink">{project.title}</h1>
             <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-ink/70">
               <span>{project.researcher_name}</span>
-              {project.researcher_school ? (
+              {project.researcher_institution_name ? (
                 <>
                   <span>•</span>
-                  <span>{project.researcher_school}</span>
+                  <span>{project.researcher_institution_name}</span>
                 </>
               ) : null}
               {project.region_label ? (
@@ -93,6 +105,14 @@ export default async function ProjectPage({ params }) {
               <span>•</span>
               <span>VQ {project.vq_score}</span>
             </div>
+
+            {verificationBadge ? (
+              <div className="mt-2">
+                <span className="rounded-full border border-ink bg-mint px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-ink">
+                  {verificationBadge}
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -167,7 +187,7 @@ export default async function ProjectPage({ params }) {
           <ul className="mt-4 space-y-3 text-sm leading-6 text-ink/80">
             <li>• Registry-only platform with deterministic instant publication.</li>
             <li>• Proof and context fields are optional but can improve the VQ score.</li>
-            <li>• Eligible researcher support routes directly to the parental buffer UPI.</li>
+            <li>• Verified badges are identity trust indicators, not certification or legal endorsement.</li>
           </ul>
         </div>
 
