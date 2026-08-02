@@ -14,14 +14,32 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-black text-ink">1. Data Protection &amp; Access Control</h2>
           <p className="mt-2">
-            Preclore treats sensitive account data with restricted access. Email addresses and student support routing details are protected behind access roles.
+            Sensitive identifiers such as email addresses and parent-managed UPI information
+            are not publicly displayed and are handled through restricted access rules.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-ink">2. What We Collect</h2>
+          <h2 className="text-xl font-black text-ink">2. Evidence &amp; Public Visibility</h2>
           <p className="mt-2">
-            We collect basic account identity data (email and user ID), profile details (display name, bio), and research submission records.
+            Public-facing evidence and published project summaries may be visible to journal viewers
+            to support academic transparency.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-black text-ink">3. Data Retention</h2>
+          <p className="mt-2">
+            Preclore retains account and submission data for platform integrity, public archive use,
+            moderation, and operational continuity, subject to legal and safety constraints.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-black text-ink">4. Contact</h2>
+          <p className="mt-2">
+            For privacy concerns, takedown requests, or account issues, use your official monitored
+            grievance/contact email before public launch.
           </p>
         </section>
       </div>
