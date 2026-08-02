@@ -15,16 +15,16 @@ export default function SiteFooter() {
           </div>
 
           <div className="flex flex-wrap gap-6 text-sm font-semibold text-ink/80">
-            <Link href="/terms" className="underline hover:text-coral">
+            <Link href="/terms" className="underline hover:opacity-80 transition-opacity">
               Terms of Service
             </Link>
-            <Link href="/privacy" className="underline hover:text-coral">
+            <Link href="/privacy" className="underline hover:opacity-80 transition-opacity">
               Privacy Policy
             </Link>
-            <Link href="/support" className="underline hover:text-coral">
+            <Link href="/support" className="underline hover:opacity-80 transition-opacity">
               Support Mission
             </Link>
-            <Link href="/payment" className="underline hover:text-coral">
+            <Link href="/payment" className="underline hover:opacity-80 transition-opacity">
               Payment
             </Link>
           </div>
