@@ -104,26 +104,24 @@ export default async function ProjectPage({ params }) {
 
           {project.pdf_url ? (
             <div>
-              <h2 className="text-xl font-black text-ink">Project PDF</h2>
-              <div className="mt-3 flex flex-wrap gap-3">
+              <h2 className="text-xl font-black text-ink">Project Document</h2>
+              <p className="mt-2 text-sm leading-7 text-ink/80">
+                This project includes an external document link for full reading.
+              </p>
+              <div className="mt-3">
                 <TactileButton href={project.pdf_url} variant="primary" target="_blank">
-                  Open PDF
+                  Open Project Document
                 </TactileButton>
-                {project.pdf_filename ? (
-                  <div className="rounded-2xl border-2 border-ink bg-white/70 px-4 py-3 text-sm font-semibold text-ink">
-                    {project.pdf_filename}
-                  </div>
-                ) : null}
-              </div>
-              <div className="mt-4 overflow-hidden rounded-[24px] border-2 border-ink bg-white/70">
-                <iframe
-                  title="Project PDF preview"
-                  src={project.pdf_url}
-                  className="h-[600px] w-full"
-                />
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div>
+              <h2 className="text-xl font-black text-ink">Project Document</h2>
+              <p className="mt-2 text-sm leading-7 text-ink/80">
+                No external project document link was provided.
+              </p>
+            </div>
+          )}
 
           {project.systems_impact ? (
             <div>
