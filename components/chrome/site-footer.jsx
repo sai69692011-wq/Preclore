@@ -2,9 +2,9 @@ import Link from 'next/link';
 
 export default function SiteFooter() {
   return (
-    <footer className="border-t-2 border-ink bg-paper mt-12">
+    <footer className="mt-12 border-t-2 border-ink bg-paper">
       <div className="mx-auto max-w-6xl px-4 py-8 lg:px-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div>
             <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
               Preclore v2.4
@@ -20,6 +20,12 @@ export default function SiteFooter() {
             </Link>
             <Link href="/privacy" className="underline hover:text-coral">
               Privacy Policy
+            </Link>
+            <Link href="/support" className="underline hover:text-coral">
+              Support Mission
+            </Link>
+            <Link href="/payment" className="underline hover:text-coral">
+              Payment
             </Link>
           </div>
         </div>
