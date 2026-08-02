@@ -12,7 +12,7 @@ const initialForm = {
   title: '',
   regionLabel: '',
   summary: '',
-  pdfFileName: '',
+  projectDocumentUrl: '',
   evidenceUrls: '',
   citations: '',
   systemsImpact: '',
@@ -42,7 +42,6 @@ export default function SubmitQuest({ isAuthenticated }) {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState(initialForm);
-  const [pdfFile, setPdfFile] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -78,18 +77,13 @@ export default function SubmitQuest({ isAuthenticated }) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function handlePdfChange(event) {
-    const file = event.target.files?.[0] || null;
-    setPdfFile(file);
-    update('pdfFileName', file?.name || '');
-  }
-
   function validateCurrentStep() {
     if (stepIndex === 0) {
       if (String(form.title).trim().length < 8) {
         setError('Project title should be at least 8 characters.');
         return false;
       }
+
       if (!String(form.projectTag).trim()) {
         setError('Please select a project type tag.');
         return false;
@@ -98,23 +92,19 @@ export default function SubmitQuest({ isAuthenticated }) {
 
     if (stepIndex === 1) {
       if (String(form.summary).trim().length < 40) {
-        setError('Please write a short abstract/description of at least 40 characters.');
+        setError('Please write a short abstract or project description of at least 40 characters.');
         return false;
       }
     }
 
-    if (stepIndex === 2) {
-      if (!pdfFile && !String(form.pdfFileName).trim()) {
-        setError('Please upload a project PDF before continuing.');
-        return false;
-      }
-      if (pdfFile && pdfFile.type !== 'application/pdf') {
-        setError('Only PDF files are allowed.');
+    if (stepIndex === 2 && String(form.projectDocumentUrl || '').trim()) {
+      if (!isHttpUrl(form.projectDocumentUrl)) {
+        setError('Project document link must be a valid public URL.');
         return false;
       }
     }
 
-    if (stepIndex === 3 || stepIndex === 4 || stepIndex === 5) {
+    if (stepIndex === 3) {
       const evidenceUrls = parseEvidenceUrls(form.evidenceUrls);
       const invalidUrl = evidenceUrls.find((url) => !isHttpUrl(url));
       if (invalidUrl) {
@@ -148,25 +138,10 @@ export default function SubmitQuest({ isAuthenticated }) {
     setSubmitting(true);
     setError('');
 
-    const payload = new FormData();
-    payload.append('title', form.title);
-    payload.append('regionLabel', form.regionLabel);
-    payload.append('summary', form.summary);
-    payload.append('evidenceUrls', form.evidenceUrls);
-    payload.append('citations', form.citations);
-    payload.append('systemsImpact', form.systemsImpact);
-    payload.append('publicGoodCase', form.publicGoodCase);
-    payload.append('reproducibilityNote', form.reproducibilityNote);
-    payload.append('projectTag', form.projectTag);
-    payload.append('confirmPublicGood', String(form.confirmPublicGood));
-
-    if (pdfFile) {
-      payload.append('pdf', pdfFile);
-    }
-
     const response = await fetch('/api/projects', {
       method: 'POST',
-      body: payload
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
     });
 
     const result = await response.json();
@@ -197,12 +172,14 @@ export default function SubmitQuest({ isAuthenticated }) {
           value={form.title}
           onChange={(e) => update('title', e.target.value)}
         />
+
         <input
           className="field"
           placeholder="City / Region (optional)"
           value={form.regionLabel}
           onChange={(e) => update('regionLabel', e.target.value)}
         />
+
         <div>
           <div className="mb-2 text-sm font-black text-ink">Project Type tag</div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -227,6 +204,7 @@ export default function SubmitQuest({ isAuthenticated }) {
         </div>
       </div>
     ),
+
     summary: (
       <textarea
         className="field min-h-40"
@@ -235,28 +213,31 @@ export default function SubmitQuest({ isAuthenticated }) {
         onChange={(e) => update('summary', e.target.value)}
       />
     ),
-    pdf: (
+
+    document: (
       <div className="space-y-4">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
-          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Mandatory Upload</div>
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Optional Document Link</div>
           <p className="mt-3 text-sm leading-6 text-ink/80">
-            Upload the main project PDF so reviewers and journal viewers can open the full work directly.
+            Preferred: Google Drive, Google Docs, Dropbox, OneDrive, or a direct PDF link.
+            Please make sure “Anyone with the link can view” is enabled.
           </p>
         </div>
 
-        <input className="field" type="file" accept="application/pdf" onChange={handlePdfChange} />
-
-        {form.pdfFileName ? (
-          <div className="rounded-2xl border-2 border-ink bg-white/70 p-3 text-sm font-semibold text-ink">
-            Selected PDF: {form.pdfFileName}
-          </div>
-        ) : null}
+        <input
+          className="field"
+          placeholder="https://drive.google.com/... or public document link"
+          value={form.projectDocumentUrl}
+          onChange={(e) => update('projectDocumentUrl', e.target.value)}
+        />
       </div>
     ),
+
     evidence: (
       <div className="space-y-4">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
-          Proof is optional. Evidence, citations, and reproducibility notes can improve the VQ score but are not required to publish.
+          Proof is optional. Evidence links, citations, and reproducibility notes can improve the VQ score
+          but are not required to publish.
         </div>
 
         <textarea
@@ -265,12 +246,14 @@ export default function SubmitQuest({ isAuthenticated }) {
           value={form.evidenceUrls}
           onChange={(e) => update('evidenceUrls', e.target.value)}
         />
+
         <textarea
           className="field min-h-24"
           placeholder="Citations, references, or source material — optional"
           value={form.citations}
           onChange={(e) => update('citations', e.target.value)}
         />
+
         <textarea
           className="field min-h-24"
           placeholder="Reproducibility note — optional"
@@ -279,6 +262,7 @@ export default function SubmitQuest({ isAuthenticated }) {
         />
       </div>
     ),
+
     impact: (
       <div className="space-y-4">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
@@ -291,6 +275,7 @@ export default function SubmitQuest({ isAuthenticated }) {
           value={form.systemsImpact}
           onChange={(e) => update('systemsImpact', e.target.value)}
         />
+
         <textarea
           className="field min-h-28"
           placeholder="Why does this serve the public good? (optional)"
@@ -299,21 +284,24 @@ export default function SubmitQuest({ isAuthenticated }) {
         />
       </div>
     ),
+
     publish: (
       <div className="space-y-5">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
           <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Instant VQ Publish</div>
           <p className="mt-3 text-sm leading-6 text-ink/80">
-            Your title, abstract, PDF, and project tag are the core requirements. Optional proof and context fields can improve trust and VQ scoring.
+            Your title, abstract, and project tag are the core requirements. Optional document links,
+            proof, and context fields can improve trust and VQ scoring.
           </p>
         </div>
+
         <label className="flex items-start gap-3 rounded-2xl border-2 border-ink/30 bg-white/70 p-4 text-sm text-ink/80">
           <input
             checked={form.confirmPublicGood}
             onChange={(e) => update('confirmPublicGood', e.target.checked)}
             type="checkbox"
           />
-          <span>I confirm this work is submitted as a public-good registry entry and can be published instantly by the autonomous VQ Engine.</span>
+          <span>I confirm this work is submitted as a public good registry entry and can be published instantly by the autonomous VQ Engine.</span>
         </label>
       </div>
     )
@@ -329,13 +317,16 @@ export default function SubmitQuest({ isAuthenticated }) {
               Step {stepIndex + 1}: {step.label}
             </h2>
           </div>
+
           <div className="rounded-full border-2 border-ink bg-butter px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-ink">
             No human review
           </div>
         </div>
+
         <ShimmerProgress value={progress} label={`Quest progress ${Math.round(progress)}%`} />
+
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/70">
-          {draftLoaded ? 'Draft autosave active (text fields only)' : 'Loading draft...'}
+          {draftLoaded ? 'Draft autosave active' : 'Loading draft...'}
         </div>
       </div>
 
