@@ -6,15 +6,6 @@ import TierBadge from '@/components/ui/tier-badge';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/server';
 
-function InitialAvatar({ name }) {
-  const initial = String(name || '?').trim().charAt(0).toUpperCase() || '?';
-  return (
-    <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-ink bg-butter text-xl font-black text-ink">
-      {initial}
-    </div>
-  );
-}
-
 function verificationLabel(role, status) {
   if (status !== 'verified') return null;
   if (role === 'student') return 'Verified Student';
@@ -75,90 +66,78 @@ export default async function ProjectPage({ params }) {
           <TierBadge tier={project.tier} />
         </div>
 
-        <div className="mt-5 flex items-center gap-4">
-          {project.researcher_avatar_url ? (
-            <img
-              src={project.researcher_avatar_url}
-              alt={project.researcher_name}
-              className="h-16 w-16 rounded-full border-2 border-ink object-cover"
-            />
-          ) : (
-            <InitialAvatar name={project.researcher_name} />
-          )}
-
-          <div>
-            <h1 className="text-4xl font-black text-ink">{project.title}</h1>
-            <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-ink/70">
-              <span>{project.researcher_name}</span>
-              {project.researcher_institution_name ? (
-                <>
-                  <span>•</span>
-                  <span>{project.researcher_institution_name}</span>
-                </>
-              ) : null}
-              {project.region_label ? (
-                <>
-                  <span>•</span>
-                  <span>{project.region_label}</span>
-                </>
-              ) : null}
-              <span>•</span>
-              <span>VQ {project.vq_score}</span>
-            </div>
-
-            {verificationBadge ? (
-              <div className="mt-2">
-                <span className="rounded-full border border-ink bg-mint px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-ink">
-                  {verificationBadge}
-                </span>
-              </div>
+        <div className="mt-5">
+          <h1 className="text-4xl font-black text-ink">{project.title}</h1>
+          <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-ink/70">
+            <span>{project.researcher_name}</span>
+            {project.researcher_institution_name ? (
+              <>
+                <span>•</span>
+                <span>{project.researcher_institution_name}</span>
+              </>
             ) : null}
+            {project.region_label ? (
+              <>
+                <span>•</span>
+                <span>{project.region_label}</span>
+              </>
+            ) : null}
+            <span>•</span>
+            <span>VQ {project.vq_score}</span>
           </div>
+
+          {verificationBadge ? (
+            <div className="mt-2">
+              <span className="rounded-full border border-ink bg-mint px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-ink">
+                {verificationBadge}
+              </span>
+            </div>
+          ) : null}
         </div>
 
         <section className="mt-8 space-y-6">
           <div>
-            <h2 className="text-xl font-black text-ink">Abstract</h2>
+            <h2 className="text-xl font-black text-ink">Short Description</h2>
             <p className="mt-2 text-sm leading-7 text-ink/80">{project.summary}</p>
           </div>
 
           {project.pdf_url ? (
             <div>
-              <h2 className="text-xl font-black text-ink">Project Document</h2>
+              <h2 className="text-xl font-black text-ink">Project File / Link</h2>
               <p className="mt-2 text-sm leading-7 text-ink/80">
-                This project includes an external document link for full reading.
+                This project includes an external file or document link.
               </p>
               <div className="mt-3">
                 <TactileButton href={project.pdf_url} variant="primary" target="_blank">
-                  Open Project Document
+                  Open Project File / Link
                 </TactileButton>
               </div>
             </div>
           ) : (
             <div>
-              <h2 className="text-xl font-black text-ink">Project Document</h2>
+              <h2 className="text-xl font-black text-ink">Project File / Link</h2>
               <p className="mt-2 text-sm leading-7 text-ink/80">
-                No external project document link was provided.
+                No external file or link was added for this project.
               </p>
             </div>
           )}
 
           {project.systems_impact ? (
             <div>
-              <h2 className="text-xl font-black text-ink">Systems Impact</h2>
+              <h2 className="text-xl font-black text-ink">Extra Context</h2>
               <p className="mt-2 text-sm leading-7 text-ink/80">{project.systems_impact}</p>
             </div>
           ) : null}
 
           {project.public_good_case ? (
             <div>
-              <h2 className="text-xl font-black text-ink">Public Good Case</h2>
+              <h2 className="text-xl font-black text-ink">Why It Matters</h2>
               <p className="mt-2 text-sm leading-7 text-ink/80">{project.public_good_case}</p>
             </div>
           ) : null}
 
           <div>
-            <h2 className="text-xl font-black text-ink">Evidence & Citations</h2>
+            <h2 className="text-xl font-black text-ink">Proof & References</h2>
             <div className="mt-3 space-y-2 text-sm leading-7 text-ink/80">
               {(project.evidence_urls || []).length ? (
                 <ul className="list-disc pl-5">
@@ -171,7 +150,7 @@ export default async function ProjectPage({ params }) {
                   ))}
                 </ul>
               ) : (
-                <p>No external evidence links attached.</p>
+                <p>No extra proof links were added.</p>
               )}
 
               <p><strong>Citations:</strong> {project.citations || 'Not provided'}</p>
@@ -183,11 +162,11 @@ export default async function ProjectPage({ params }) {
 
       <aside className="space-y-5">
         <div className="rounded-[30px] border-2 border-ink bg-white/75 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]">
-          <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Registry Rules</div>
+          <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Registry Notes</div>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-ink/80">
-            <li>• Registry-only platform with deterministic instant publication.</li>
-            <li>• Proof and context fields are optional but can improve the VQ score.</li>
-            <li>• Verified badges are identity trust indicators, not certification or legal endorsement.</li>
+            <li>• Projects publish instantly after submission.</li>
+            <li>• Extra proof and extra details are optional.</li>
+            <li>• Verified badges are identity trust indicators, not certification.</li>
           </ul>
         </div>
 
