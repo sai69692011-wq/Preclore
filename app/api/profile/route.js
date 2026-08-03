@@ -88,6 +88,19 @@ export async function POST(request) {
     institutionIdRef = submittedInstitutionId;
   }
 
+  const verificationSubmitted =
+    Boolean(submittedInstitutionId) ||
+    (verificationDoc instanceof File && verificationDoc.size > 0);
+
+  if (verificationSubmitted) {
+    if (!schoolName) {
+      return NextResponse.json(
+        { error: 'Please enter your school, college, or organization name before submitting verification.' },
+        { status: 400 }
+      );
+    }
+  }
+
   if (verificationDoc instanceof File && verificationDoc.size > 0) {
     if (!allowedVerificationMime(verificationDoc)) {
       return NextResponse.json({ error: 'Verification proof must be an image or PDF.' }, { status: 400 });
@@ -107,10 +120,6 @@ export async function POST(request) {
 
     verificationDocPath = verificationPath;
   }
-
-  const verificationSubmitted =
-    Boolean(submittedInstitutionId) ||
-    (verificationDoc instanceof File && verificationDoc.size > 0);
 
   if (verificationSubmitted) {
     verificationStatus = 'pending';
