@@ -26,12 +26,7 @@ function deriveVerificationKind(role) {
 }
 
 function allowedVerificationMime(file) {
-  return [
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-    'application/pdf'
-  ].includes(file.type);
+  return ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'].includes(file.type);
 }
 
 export async function POST(request) {
@@ -49,7 +44,7 @@ export async function POST(request) {
   const { data: existingProfile } = await supabase
     .from('users')
     .select(
-      'role, avatar_url, verification_status, verification_kind, institution_id_ref, verification_doc_path'
+      'role, verification_status, verification_kind, institution_id_ref, verification_doc_path'
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -66,7 +61,6 @@ export async function POST(request) {
   const parentUpiId = isStudent ? normalizeText(formData.get('parent_upi_id')) || null : null;
 
   const submittedInstitutionId = normalizeText(formData.get('institution_id_ref')).slice(0, 120);
-  const avatar = formData.get('avatar');
   const verificationDoc = formData.get('verification_doc');
   const currentYear = new Date().getFullYear();
 
@@ -83,26 +77,6 @@ export async function POST(request) {
 
   if (parentUpiId && !isValidUpiId(parentUpiId)) {
     return NextResponse.json({ error: 'Invalid parent UPI ID format.' }, { status: 400 });
-  }
-
-  let avatarUrl = existingProfile?.avatar_url || null;
-
-  if (avatar instanceof File && avatar.size > 0) {
-    const avatarPath = `${user.id}/${Date.now()}-${safeFilename(avatar.name || 'avatar')}`;
-    const uploadResult = await supabase.storage.from('profile-images').upload(avatarPath, avatar, {
-      contentType: avatar.type || 'image/png',
-      upsert: false
-    });
-
-    if (uploadResult.error) {
-      return NextResponse.json({ error: uploadResult.error.message }, { status: 400 });
-    }
-
-    const {
-      data: { publicUrl }
-    } = supabase.storage.from('profile-images').getPublicUrl(avatarPath);
-
-    avatarUrl = publicUrl;
   }
 
   let verificationStatus = existingProfile?.verification_status || 'unverified';
@@ -152,7 +126,6 @@ export async function POST(request) {
     bio,
     birth_year: birthYear,
     parent_upi_id: parentUpiId,
-    avatar_url: avatarUrl,
     institution_name: schoolName,
     institution_id_ref: institutionIdRef,
     verification_kind: verificationKind,
@@ -168,7 +141,9 @@ export async function POST(request) {
   }
 
   return NextResponse.json({
-    message: 'Profile saved.',
+    message: verificationSubmitted
+      ? 'Profile saved. Verification is now pending review.'
+      : 'Profile saved.',
     verificationStatus
   });
 }
