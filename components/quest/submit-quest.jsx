@@ -80,26 +80,26 @@ export default function SubmitQuest({ isAuthenticated }) {
   function validateCurrentStep() {
     if (stepIndex === 0) {
       if (String(form.title).trim().length < 8) {
-        setError('Project title should be at least 8 characters.');
+        setError('Please enter a project title with at least 8 characters.');
         return false;
       }
 
       if (!String(form.projectTag).trim()) {
-        setError('Please select a project type tag.');
+        setError('Please choose a project type.');
         return false;
       }
     }
 
     if (stepIndex === 1) {
       if (String(form.summary).trim().length < 40) {
-        setError('Please write a short abstract or project description of at least 40 characters.');
+        setError('Please add a short description of at least 40 characters.');
         return false;
       }
     }
 
     if (stepIndex === 2 && String(form.projectDocumentUrl || '').trim()) {
       if (!isHttpUrl(form.projectDocumentUrl)) {
-        setError('Project document link must be a valid public URL.');
+        setError('Please enter a valid public file/link URL.');
         return false;
       }
     }
@@ -108,13 +108,13 @@ export default function SubmitQuest({ isAuthenticated }) {
       const evidenceUrls = parseEvidenceUrls(form.evidenceUrls);
       const invalidUrl = evidenceUrls.find((url) => !isHttpUrl(url));
       if (invalidUrl) {
-        setError(`Invalid evidence URL: ${invalidUrl}`);
+        setError(`This evidence link is not valid: ${invalidUrl}`);
         return false;
       }
     }
 
     if (stepIndex === 5 && form.confirmPublicGood !== true) {
-      setError('Please confirm public-good publication before publishing.');
+      setError('Please confirm before publishing.');
       return false;
     }
 
@@ -181,7 +181,7 @@ export default function SubmitQuest({ isAuthenticated }) {
         />
 
         <div>
-          <div className="mb-2 text-sm font-black text-ink">Project Type tag</div>
+          <div className="mb-2 text-sm font-black text-ink">Project type</div>
           <div className="grid gap-3 md:grid-cols-2">
             {PROJECT_TAGS.map((tag) => (
               <label
@@ -208,7 +208,7 @@ export default function SubmitQuest({ isAuthenticated }) {
     summary: (
       <textarea
         className="field min-h-40"
-        placeholder="Write a short project abstract or description. This is mandatory and should explain what the project is about."
+        placeholder="Write a short description of your project. What is it about, what did you study, or what did you observe?"
         value={form.summary}
         onChange={(e) => update('summary', e.target.value)}
       />
@@ -217,16 +217,16 @@ export default function SubmitQuest({ isAuthenticated }) {
     document: (
       <div className="space-y-4">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
-          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Optional Document Link</div>
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Project file or link (optional)</div>
           <p className="mt-3 text-sm leading-6 text-ink/80">
-            Preferred: Google Drive, Google Docs, Dropbox, OneDrive, or a direct PDF link.
-            Please make sure “Anyone with the link can view” is enabled.
+            You can add a Google Drive, Google Docs, Dropbox, OneDrive, or public PDF link here.
+            Make sure anyone with the link can view it.
           </p>
         </div>
 
         <input
           className="field"
-          placeholder="https://drive.google.com/... or public document link"
+          placeholder="Paste your Google Drive / Docs / Dropbox / OneDrive / PDF link"
           value={form.projectDocumentUrl}
           onChange={(e) => update('projectDocumentUrl', e.target.value)}
         />
@@ -236,27 +236,26 @@ export default function SubmitQuest({ isAuthenticated }) {
     evidence: (
       <div className="space-y-4">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
-          Proof is optional. Evidence links, citations, and reproducibility notes can improve the VQ score
-          but are not required to publish.
+          This section is optional. Add links, references, or proof only if you want to strengthen your project.
         </div>
 
         <textarea
           className="field min-h-24"
-          placeholder="Evidence links (GPS/video/docs) — optional, one per line or comma separated"
+          placeholder="Evidence links (optional) — one per line or comma separated"
           value={form.evidenceUrls}
           onChange={(e) => update('evidenceUrls', e.target.value)}
         />
 
         <textarea
           className="field min-h-24"
-          placeholder="Citations, references, or source material — optional"
+          placeholder="References or citations (optional)"
           value={form.citations}
           onChange={(e) => update('citations', e.target.value)}
         />
 
         <textarea
           className="field min-h-24"
-          placeholder="Reproducibility note — optional"
+          placeholder="How someone else could repeat this work (optional)"
           value={form.reproducibilityNote}
           onChange={(e) => update('reproducibilityNote', e.target.value)}
         />
@@ -266,19 +265,19 @@ export default function SubmitQuest({ isAuthenticated }) {
     impact: (
       <div className="space-y-4">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
-          These fields are optional. They help reviewers understand what the project focuses on and can improve the VQ score.
+          This section is optional. Add it if you want to explain why the project matters more deeply.
         </div>
 
         <textarea
           className="field min-h-28"
-          placeholder="What systems-level impact could this create? (optional)"
+          placeholder="What bigger issue or system does this project connect to? (optional)"
           value={form.systemsImpact}
           onChange={(e) => update('systemsImpact', e.target.value)}
         />
 
         <textarea
           className="field min-h-28"
-          placeholder="Why does this serve the public good? (optional)"
+          placeholder="Why is this useful for the public good? (optional)"
           value={form.publicGoodCase}
           onChange={(e) => update('publicGoodCase', e.target.value)}
         />
@@ -288,10 +287,9 @@ export default function SubmitQuest({ isAuthenticated }) {
     publish: (
       <div className="space-y-5">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
-          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Instant VQ Publish</div>
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Ready to publish</div>
           <p className="mt-3 text-sm leading-6 text-ink/80">
-            Your title, abstract, and project tag are the core requirements. Optional document links,
-            proof, and context fields can improve trust and VQ scoring.
+            Your title, description, and project type are enough to publish. Optional links and proof can improve trust and VQ score.
           </p>
         </div>
 
@@ -301,7 +299,7 @@ export default function SubmitQuest({ isAuthenticated }) {
             onChange={(e) => update('confirmPublicGood', e.target.checked)}
             type="checkbox"
           />
-          <span>I confirm this work is submitted as a public good registry entry and can be published instantly by the autonomous VQ Engine.</span>
+          <span>I confirm this is a public-good registry submission and can be published instantly.</span>
         </label>
       </div>
     )
@@ -319,7 +317,7 @@ export default function SubmitQuest({ isAuthenticated }) {
           </div>
 
           <div className="rounded-full border-2 border-ink bg-butter px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-ink">
-            No human review
+            Instant publish
           </div>
         </div>
 
@@ -332,7 +330,7 @@ export default function SubmitQuest({ isAuthenticated }) {
 
       {!isAuthenticated ? (
         <div className="rounded-[24px] border-2 border-ink bg-peach p-5 text-sm font-semibold text-ink">
-          Sign in first so your submission can be attributed to your researcher profile.
+          Please sign in first so your submission can be linked to your profile.
         </div>
       ) : null}
 
