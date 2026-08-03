@@ -38,12 +38,12 @@ export default function AuthPage() {
 
   const emailError = useMemo(() => {
     if (!email) return '';
-    return isValidEmail(email) ? '' : 'Enter a valid email address.';
+    return isValidEmail(email) ? '' : 'Please enter a valid email address.';
   }, [email]);
 
   const passwordError = useMemo(() => {
     if (!password) return '';
-    return isValidPassword(password) ? '' : 'Password must be at least 8 characters.';
+    return isValidPassword(password) ? '' : 'Please use at least 8 characters for your password.';
   }, [password]);
 
   useEffect(() => {
@@ -101,13 +101,13 @@ export default function AuthPage() {
 
     if (!isValidEmail(email)) {
       setLoading(false);
-      setError('Enter a valid email address.');
+      setError('Please enter a valid email address.');
       return;
     }
 
     if (!isValidPassword(password)) {
       setLoading(false);
-      setError('Password must be at least 8 characters.');
+      setError('Please use at least 8 characters for your password.');
       return;
     }
 
@@ -140,7 +140,7 @@ export default function AuthPage() {
       }
 
       setLoading(false);
-      setMessage('Account created successfully. You can now sign in.');
+      setMessage('Your account has been created. You can now sign in.');
       setIsSignUp(false);
       return;
     }
@@ -168,14 +168,14 @@ export default function AuthPage() {
   async function signOut() {
     await supabase.auth.signOut();
     setCurrentUser(null);
-    setMessage('Signed out.');
+    setMessage('Signed out successfully.');
     setError('');
   }
 
   if (checkingSession) {
     return (
       <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
-        <p className="text-sm font-semibold text-ink">Checking session...</p>
+        <p className="text-sm font-semibold text-ink">Checking your session...</p>
       </div>
     );
   }
@@ -184,10 +184,10 @@ export default function AuthPage() {
     return (
       <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
         <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
-          Active Session
+          Signed In
         </div>
 
-        <h1 className="mt-3 text-4xl font-black text-ink">You are signed in</h1>
+        <h1 className="mt-3 text-4xl font-black text-ink">You are already signed in</h1>
         <p className="mt-2 break-all text-sm text-ink/80">{currentUser.email}</p>
 
         {message ? (
@@ -211,7 +211,7 @@ export default function AuthPage() {
   return (
     <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
       <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
-        Supabase Auth
+        Account
       </div>
 
       <h1 className="mt-3 text-4xl font-black text-ink">
@@ -220,8 +220,8 @@ export default function AuthPage() {
 
       <p className="mt-3 text-sm leading-7 text-ink/80">
         {isSignUp
-          ? 'Register your details to access Preclore research tools.'
-          : 'Sign in with your email and password.'}
+          ? 'Use your email and create any password you want for Preclore.'
+          : 'Enter your email and the password you created for Preclore.'}
       </p>
 
       {error ? (
@@ -255,7 +255,7 @@ export default function AuthPage() {
 
             <div>
               <label className="mb-1 block text-xs font-black uppercase tracking-wider text-ink">
-                Role
+                Account Type
               </label>
               <select
                 value={role}
@@ -263,7 +263,7 @@ export default function AuthPage() {
                 className="field"
               >
                 <option value="student">Student</option>
-                <option value="alumni_readonly">Guest / Independent Viewer</option>
+                <option value="alumni_readonly">Guest / Viewer</option>
               </select>
             </div>
           </>
@@ -279,7 +279,7 @@ export default function AuthPage() {
             onChange={(event) => setEmail(event.target.value)}
             required
             className="field"
-            placeholder="you@domain.com"
+            placeholder="you@example.com"
           />
         </div>
 
@@ -299,9 +299,13 @@ export default function AuthPage() {
             onChange={(event) => setPassword(event.target.value)}
             required
             className="field"
-            placeholder="Minimum 8 characters"
+            placeholder="Create any password you want"
           />
         </div>
+
+        <p className="text-xs text-ink/70">
+          This is your <strong>Preclore password</strong>. It does <strong>not</strong> need to be your email account password.
+        </p>
 
         {passwordError ? (
           <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
@@ -314,14 +318,14 @@ export default function AuthPage() {
             By signing up, you agree to our{' '}
             <Link
               href="/terms"
-              className="underline font-semibold transition-colors hover:text-coral"
+              className="font-semibold underline transition-opacity hover:opacity-80"
             >
               Terms of Service
             </Link>{' '}
             and{' '}
             <Link
               href="/privacy"
-              className="underline font-semibold transition-colors hover:text-coral"
+              className="font-semibold underline transition-opacity hover:opacity-80"
             >
               Privacy Policy
             </Link>
@@ -348,7 +352,7 @@ export default function AuthPage() {
             setError('');
             setMessage('');
           }}
-          className="text-sm font-semibold underline transition-colors hover:text-coral"
+          className="text-sm font-semibold underline transition-opacity hover:opacity-80"
         >
           {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
         </button>
