@@ -5,15 +5,6 @@ import Link from 'next/link';
 import TierBadge from '@/components/ui/tier-badge';
 import { PROJECT_TAGS } from '@/lib/constants';
 
-function InitialAvatar({ name }) {
-  const initial = String(name || '?').trim().charAt(0).toUpperCase() || '?';
-  return (
-    <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-ink bg-butter text-sm font-black text-ink">
-      {initial}
-    </div>
-  );
-}
-
 function verificationLabel(role, status) {
   if (status !== 'verified') return null;
   if (role === 'student') return 'Verified Student';
@@ -53,7 +44,7 @@ export default function JournalBrowser({ projects }) {
         <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
           <input
             className="rounded-2xl border-2 border-ink bg-paper px-4 py-3 text-sm outline-none"
-            placeholder="Search title, researcher, summary, region..."
+            placeholder="Search title, researcher, summary, institution..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -94,40 +85,29 @@ export default function JournalBrowser({ projects }) {
                   <div className="flex items-center gap-2">
                     {project.pdf_url ? (
                       <span className="rounded-full border border-ink/20 bg-lilac px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-ink">
-                        DOC LINK
+                        FILE LINK
                       </span>
                     ) : null}
                     <TierBadge tier={project.tier} className="scale-90" />
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center gap-3">
-                  {project.researcher_avatar_url ? (
-                    <img
-                      src={project.researcher_avatar_url}
-                      alt={project.researcher_name}
-                      className="h-12 w-12 rounded-full border-2 border-ink object-cover"
-                    />
-                  ) : (
-                    <InitialAvatar name={project.researcher_name} />
-                  )}
+                <div className="mt-4">
+                  <h3 className="text-2xl font-black text-ink">{project.title}</h3>
+                  <div className="mt-1 text-xs font-semibold text-ink/70">
+                    {project.researcher_name}
+                    {project.region_label ? ` • ${project.region_label}` : ''}
+                  </div>
 
-                  <div>
-                    <h3 className="text-2xl font-black text-ink">{project.title}</h3>
-                    <div className="mt-1 text-xs font-semibold text-ink/70">
-                      {project.researcher_name}
-                      {project.region_label ? ` • ${project.region_label}` : ''}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink/65">
-                      {project.researcher_institution_name ? (
-                        <span>{project.researcher_institution_name}</span>
-                      ) : null}
-                      {badge ? (
-                        <span className="rounded-full border border-ink bg-mint px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-ink">
-                          {badge}
-                        </span>
-                      ) : null}
-                    </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink/65">
+                    {project.researcher_institution_name ? (
+                      <span>{project.researcher_institution_name}</span>
+                    ) : null}
+                    {badge ? (
+                      <span className="rounded-full border border-ink bg-mint px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-ink">
+                        {badge}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
@@ -138,7 +118,7 @@ export default function JournalBrowser({ projects }) {
                   {project.pdf_url ? (
                     <>
                       <span>•</span>
-                      <span>Open project document on project page</span>
+                      <span>Open full file/link on project page</span>
                     </>
                   ) : null}
                 </div>
