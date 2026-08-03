@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createClient } from '@/lib/supabase/browser';
 import TactileButton from '@/components/ui/tactile-button';
 import { deriveAccessProfile } from '@/lib/access';
 import { isValidUpiId, normalizeText } from '@/lib/utils';
@@ -27,6 +28,7 @@ function verificationTone(status) {
 }
 
 export default function ProfileForm({ initialProfile }) {
+  const supabase = useMemo(() => createClient(), []);
   const role = initialProfile?.role || 'student';
 
   const [profile, setProfile] = useState({
@@ -37,15 +39,28 @@ export default function ProfileForm({ initialProfile }) {
     bio: initialProfile?.bio || '',
     parent_upi_id: initialProfile?.parent_upi_id || '',
     birth_year: initialProfile?.birth_year ? String(initialProfile.birth_year) : '',
-    avatar_url: initialProfile?.avatar_url || '',
     institution_id_ref: initialProfile?.institution_id_ref || '',
     verification_status: initialProfile?.verification_status || 'unverified'
   });
 
-  const [avatarFile, setAvatarFile] = useState(null);
   const [verificationFile, setVerificationFile] = useState(null);
+  const [institutions, setInstitutions] = useState([]);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function loadInstitutions() {
+      const { data } = await supabase
+        .from('institution_registry')
+        .select('name, kind')
+        .eq('active', true)
+        .order('name');
+
+      setInstitutions(data || []);
+    }
+
+    loadInstitutions();
+  }, [supabase]);
 
   const access = useMemo(
     () => deriveAccessProfile({ role, birth_year: profile.birth_year ? Number(profile.birth_year) : null }),
@@ -55,8 +70,13 @@ export default function ProfileForm({ initialProfile }) {
   const isStudent = role === 'student';
   const isMentor = role === 'mentor';
   const isReviewerLike = role === 'alumni_readonly' || role === 'admin';
-  const showInstitutionFields = true;
-  const showStudentFields = isStudent;
+
+  const institutionOptions = useMemo(() => {
+    if (isStudent) {
+      return institutions.filter((item) => item.kind === 'school' || item.kind === 'college');
+    }
+    return institutions;
+  }, [institutions, isStudent]);
 
   const clientError = useMemo(() => {
     const birthYear = profile.birth_year ? Number(profile.birth_year) : null;
@@ -70,15 +90,16 @@ export default function ProfileForm({ initialProfile }) {
       return 'Birth year must be a valid year.';
     }
 
-    if (showStudentFields && normalizeText(profile.parent_upi_id) && !isValidUpiId(profile.parent_upi_id)) {
+    if (isStudent && normalizeText(profile.parent_upi_id) && !isValidUpiId(profile.parent_upi_id)) {
       return 'Parent UPI ID must look like parentname@bank.';
     }
 
     return '';
-  }, [profile.birth_year, profile.display_name, profile.parent_upi_id, showStudentFields]);
+  }, [profile.birth_year, profile.display_name, profile.parent_upi_id, isStudent]);
 
   async function handleSubmit(event) {
     event.preventDefault();
+
     if (clientError) {
       setMessage(clientError);
       return;
@@ -90,16 +111,12 @@ export default function ProfileForm({ initialProfile }) {
     const payload = new FormData();
     payload.append('display_name', profile.display_name);
     payload.append('username', profile.username);
-    payload.append('school_name', showInstitutionFields ? profile.school_name : '');
+    payload.append('school_name', profile.school_name);
     payload.append('grade_level', profile.grade_level);
     payload.append('bio', profile.bio);
-    payload.append('birth_year', showStudentFields ? profile.birth_year : '');
-    payload.append('parent_upi_id', showStudentFields ? profile.parent_upi_id : '');
+    payload.append('birth_year', isStudent ? profile.birth_year : '');
+    payload.append('parent_upi_id', isStudent ? profile.parent_upi_id : '');
     payload.append('institution_id_ref', profile.institution_id_ref);
-
-    if (avatarFile) {
-      payload.append('avatar', avatarFile);
-    }
 
     if (verificationFile) {
       payload.append('verification_doc', verificationFile);
@@ -127,11 +144,6 @@ export default function ProfileForm({ initialProfile }) {
     setProfile((current) => ({ ...current, [field]: value }));
   }
 
-  function handleAvatarChange(event) {
-    const file = event.target.files?.[0] || null;
-    setAvatarFile(file);
-  }
-
   function handleVerificationFileChange(event) {
     const file = event.target.files?.[0] || null;
     setVerificationFile(file);
@@ -143,10 +155,10 @@ export default function ProfileForm({ initialProfile }) {
       onSubmit={handleSubmit}
     >
       <div>
-        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Researcher Profile</div>
-        <h2 className="mt-2 text-2xl font-black text-ink">Set your public card</h2>
+        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Profile</div>
+        <h2 className="mt-2 text-2xl font-black text-ink">Set your public details</h2>
         <p className="mt-2 text-sm text-ink/75">
-          Public display names are required for publishing. Sensitive support-routing information stays protected.
+          Your public name helps people recognize your work. Private support and ID details stay protected.
         </p>
       </div>
 
@@ -158,7 +170,7 @@ export default function ProfileForm({ initialProfile }) {
           {' '}• Access:{' '}
           <strong>
             {access.canSubmit
-              ? 'Can submit quests'
+              ? 'Can submit projects'
               : access.canRequestProtectedSupport
                 ? 'Mentor support access only'
                 : 'Read-only portfolio mode'}
@@ -167,7 +179,7 @@ export default function ProfileForm({ initialProfile }) {
       </div>
 
       <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
-        <div className="text-sm font-black text-ink">Verification status</div>
+        <div className="text-sm font-black text-ink">Verification (optional)</div>
         <div
           className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.2em] ${verificationTone(
             profile.verification_status
@@ -178,10 +190,10 @@ export default function ProfileForm({ initialProfile }) {
 
         <p className="mt-3 text-sm text-ink/75">
           {isStudent
-            ? 'Optional: upload a school/student ID for verification. Previous-year ID is acceptable if it clearly matches the same name and institution.'
+            ? 'You can upload a school/student ID if you want a verified badge. A previous-year ID is okay if the same name and institution still match.'
             : isMentor
-              ? 'Optional: upload a work/institution ID for verification.'
-              : 'Optional: upload institutional or reviewer proof for verification.'}
+              ? 'You can upload a work or institution ID if you want a verified badge.'
+              : 'You can upload institution or reviewer proof if you want a verified badge.'}
         </p>
       </div>
 
@@ -200,44 +212,29 @@ export default function ProfileForm({ initialProfile }) {
         />
       </div>
 
-      <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
-        <div className="text-sm font-black text-ink">Profile image / logo (optional)</div>
-        <p className="mt-1 text-sm text-ink/75">
-          {isStudent
-            ? 'Upload a profile photo if you want your journal card to show your identity.'
-            : 'For mentors, reviewers, and institutional accounts, use a school crest, organization logo, or a clear profile photo.'}
-        </p>
-        <input
-          className="field mt-3"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          onChange={handleAvatarChange}
-        />
-        {profile.avatar_url ? (
-          <img
-            src={profile.avatar_url}
-            alt="Current profile"
-            className="mt-3 h-20 w-20 rounded-full border-2 border-ink object-cover"
-          />
-        ) : null}
-      </div>
-
-      {showInstitutionFields ? (
-        <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
           <input
             className="field"
+            list="institution-options"
             placeholder={isStudent ? 'School / College name' : 'Institution / Organization'}
             value={profile.school_name}
             onChange={(e) => update('school_name', e.target.value)}
           />
-          <input
-            className="field"
-            placeholder={isStudent ? 'Grade / Year' : 'Department / Role'}
-            value={profile.grade_level}
-            onChange={(e) => update('grade_level', e.target.value)}
-          />
+          <datalist id="institution-options">
+            {institutionOptions.map((item) => (
+              <option key={item.name} value={item.name} />
+            ))}
+          </datalist>
         </div>
-      ) : null}
+
+        <input
+          className="field"
+          placeholder={isStudent ? 'Grade / Year' : 'Department / Role'}
+          value={profile.grade_level}
+          onChange={(e) => update('grade_level', e.target.value)}
+        />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <input
@@ -254,11 +251,11 @@ export default function ProfileForm({ initialProfile }) {
         />
       </div>
 
-      {showStudentFields ? (
+      {isStudent ? (
         <div className="grid gap-4 md:grid-cols-2">
           <input
             className="field"
-            placeholder="Birth year (for age gate)"
+            placeholder="Birth year"
             value={profile.birth_year}
             onChange={(e) => update('birth_year', e.target.value)}
             inputMode="numeric"
