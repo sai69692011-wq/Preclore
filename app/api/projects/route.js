@@ -31,24 +31,24 @@ export async function POST(request) {
 
   const body = await readJsonObject(request);
   if (!body) {
-    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
 
   if (body.confirmPublicGood !== true) {
     return NextResponse.json(
-      { error: 'Public-good publication confirmation is required.' },
+      { error: 'Please confirm before publishing.' },
       { status: 400 }
     );
   }
 
   if (!PROJECT_TAG_COMPAT.includes(body.projectTag)) {
-    return NextResponse.json({ error: 'Invalid project tag.' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid project type.' }, { status: 400 });
   }
 
   const projectDocumentUrl = normalizeText(body.projectDocumentUrl).slice(0, 2000);
 
   if (projectDocumentUrl && !isHttpUrl(projectDocumentUrl)) {
-    return NextResponse.json({ error: 'Project document link must be a valid public URL.' }, { status: 400 });
+    return NextResponse.json({ error: 'Project file/link must be a valid public URL.' }, { status: 400 });
   }
 
   const normalized = {
@@ -82,7 +82,9 @@ export async function POST(request) {
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('display_name, school_name, role, birth_year, avatar_url')
+    .select(
+      'display_name, school_name, institution_name, role, birth_year, verification_status'
+    )
     .eq('id', user.id)
     .maybeSingle();
 
@@ -93,7 +95,7 @@ export async function POST(request) {
   const access = deriveAccessProfile(profile || {});
   if (!access.canSubmit) {
     return NextResponse.json(
-      { error: 'This account is in read-only or mentor mode and cannot publish submissions.' },
+      { error: 'This account cannot publish submissions.' },
       { status: 403 }
     );
   }
@@ -101,7 +103,7 @@ export async function POST(request) {
   const publicName = normalizeText(profile?.display_name).slice(0, 80);
   if (!publicName) {
     return NextResponse.json(
-      { error: 'Complete your profile with a public display name before publishing.' },
+      { error: 'Please complete your profile with a public display name before publishing.' },
       { status: 400 }
     );
   }
@@ -113,8 +115,8 @@ export async function POST(request) {
   const payload = {
     researcher_id: user.id,
     researcher_name: publicName,
-    researcher_school: profile?.school_name || null,
-    researcher_avatar_url: profile?.avatar_url || null,
+    researcher_school: profile?.institution_name || profile?.school_name || null,
+    researcher_avatar_url: null,
     slug,
     title: normalized.title,
     summary: normalized.summary,
