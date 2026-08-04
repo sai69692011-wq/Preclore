@@ -28,10 +28,10 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-black text-ink">3. Evidence &amp; Public Visibility</h2>
+          <h2 className="text-xl font-black text-ink">3. Project Links &amp; Public Visibility</h2>
           <p className="mt-2">
-            Public-facing evidence, document links, and published project summaries may be visible to journal viewers
-            to support academic transparency.
+            Public-facing project summaries, evidence links, and external project file links may be visible to journal viewers
+            to support transparency and discovery.
           </p>
         </section>
 
