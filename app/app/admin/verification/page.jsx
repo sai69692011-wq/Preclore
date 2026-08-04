@@ -8,6 +8,7 @@ export default function AdminVerificationPage() {
   const supabase = useMemo(() => createClient(), []);
   const [status, setStatus] = useState('loading');
   const [items, setItems] = useState([]);
+  const [institutions, setInstitutions] = useState([]);
   const [flash, setFlash] = useState('');
   const [notes, setNotes] = useState({});
 
@@ -33,13 +34,20 @@ export default function AdminVerificationPage() {
         return;
       }
 
-      const { data: rows, error } = await supabase
-        .from('users')
-        .select(
-          'id, display_name, username, role, school_name, institution_name, institution_id_ref, verification_status, verification_doc_path'
-        )
-        .eq('verification_status', 'pending')
-        .order('updated_at', { ascending: false });
+      const [{ data: rows, error }, { data: institutionsData }] = await Promise.all([
+        supabase
+          .from('users')
+          .select(
+            'id, display_name, username, role, school_name, institution_name, institution_id_ref, verification_status'
+          )
+          .eq('verification_status', 'pending')
+          .order('updated_at', { ascending: false }),
+        supabase
+          .from('institution_registry')
+          .select('name, kind')
+          .eq('active', true)
+          .order('name')
+      ]);
 
       if (error) {
         setStatus('error');
@@ -47,26 +55,8 @@ export default function AdminVerificationPage() {
         return;
       }
 
-      const enhanced = await Promise.all(
-        (rows || []).map(async (row) => {
-          let previewUrl = null;
-
-          if (row.verification_doc_path) {
-            const { data } = await supabase.storage
-              .from('verification-docs')
-              .createSignedUrl(row.verification_doc_path, 60 * 15);
-
-            previewUrl = data?.signedUrl || null;
-          }
-
-          return {
-            ...row,
-            previewUrl
-          };
-        })
-      );
-
-      setItems(enhanced);
+      setItems(rows || []);
+      setInstitutions(institutionsData || []);
       setStatus('ready');
     }
 
@@ -92,6 +82,13 @@ export default function AdminVerificationPage() {
     }
   }
 
+  function institutionMatch(name) {
+    if (!name) return false;
+    return institutions.some(
+      (item) => item.name.trim().toLowerCase() === String(name).trim().toLowerCase()
+    );
+  }
+
   if (status === 'loading') {
     return <div className="text-sm font-semibold text-ink">Loading verification queue...</div>;
   }
@@ -114,7 +111,7 @@ export default function AdminVerificationPage() {
         <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Admin</div>
         <h1 className="mt-2 text-4xl font-black text-ink">Verification Queue</h1>
         <p className="mt-2 text-sm leading-7 text-ink/80">
-          Review optional ID uploads and decide whether the badge should be approved or rejected.
+          Check the submitted institution name and ID reference against your own list, then approve or reject.
         </p>
       </div>
 
@@ -126,58 +123,52 @@ export default function AdminVerificationPage() {
 
       <div className="grid gap-5">
         {items.length ? (
-          items.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
-            >
-              <div className="space-y-2 text-sm text-ink/80">
-                <p><strong>Name:</strong> {item.display_name || item.username || item.id}</p>
-                <p><strong>Role:</strong> {item.role}</p>
-                <p><strong>Institution:</strong> {item.institution_name || item.school_name || 'Not set'}</p>
-                <p><strong>ID Reference:</strong> {item.institution_id_ref || 'Not provided'}</p>
-              </div>
+          items.map((item) => {
+            const institutionName = item.institution_name || item.school_name || '';
+            const matched = institutionMatch(institutionName);
 
-              <div className="mt-4">
-                {item.previewUrl ? (
-                  <a
-                    href={item.previewUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm font-semibold underline"
-                  >
-                    Open uploaded proof
-                  </a>
-                ) : (
-                  <div className="text-sm text-ink/70">No proof file uploaded</div>
-                )}
-              </div>
+            return (
+              <div
+                key={item.id}
+                className="rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
+              >
+                <div className="space-y-2 text-sm text-ink/80">
+                  <p><strong>Name:</strong> {item.display_name || item.username || item.id}</p>
+                  <p><strong>Role:</strong> {item.role}</p>
+                  <p><strong>Institution:</strong> {institutionName || 'Not set'}</p>
+                  <p><strong>ID Reference:</strong> {item.institution_id_ref || 'Not provided'}</p>
+                  <p>
+                    <strong>Institution in your list:</strong>{' '}
+                    {matched ? 'Yes' : 'No'}
+                  </p>
+                </div>
 
-              <textarea
-                className="field mt-4 min-h-24"
-                placeholder="Optional admin note"
-                value={notes[item.id] || ''}
-                onChange={(e) =>
-                  setNotes((current) => ({
-                    ...current,
-                    [item.id]: e.target.value
-                  }))
-                }
-              />
+                <textarea
+                  className="field mt-4 min-h-24"
+                  placeholder="Optional admin note"
+                  value={notes[item.id] || ''}
+                  onChange={(e) =>
+                    setNotes((current) => ({
+                      ...current,
+                      [item.id]: e.target.value
+                    }))
+                  }
+                />
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <TactileButton onClick={() => review(item.id, 'approve')} variant="mint">
-                  Approve
-                </TactileButton>
-                <TactileButton onClick={() => review(item.id, 'reject')} variant="secondary">
-                  Reject
-                </TactileButton>
-                <TactileButton onClick={() => review(item.id, 'expired')} variant="ghost">
-                  Mark Expired
-                </TactileButton>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <TactileButton onClick={() => review(item.id, 'approve')} variant="mint">
+                    Approve
+                  </TactileButton>
+                  <TactileButton onClick={() => review(item.id, 'reject')} variant="secondary">
+                    Reject
+                  </TactileButton>
+                  <TactileButton onClick={() => review(item.id, 'expired')} variant="ghost">
+                    Mark Expired
+                  </TactileButton>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="rounded-[24px] border-2 border-dashed border-ink/40 bg-white/70 p-8 text-sm text-ink/75">
             No pending verification requests right now.
