@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase/browser';
+import { useMemo, useState } from 'react';
 import TactileButton from '@/components/ui/tactile-button';
 import { deriveAccessProfile } from '@/lib/access';
 import { isValidUpiId, normalizeText } from '@/lib/utils';
@@ -28,7 +27,6 @@ function verificationTone(status) {
 }
 
 export default function ProfileForm({ initialProfile }) {
-  const supabase = useMemo(() => createClient(), []);
   const role = initialProfile?.role || 'student';
 
   const [profile, setProfile] = useState({
@@ -43,40 +41,21 @@ export default function ProfileForm({ initialProfile }) {
     verification_status: initialProfile?.verification_status || 'unverified'
   });
 
-  const [verificationFile, setVerificationFile] = useState(null);
-  const [institutions, setInstitutions] = useState([]);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    async function loadInstitutions() {
-      const { data } = await supabase
-        .from('institution_registry')
-        .select('name, kind')
-        .eq('active', true)
-        .order('name');
-
-      setInstitutions(data || []);
-    }
-
-    loadInstitutions();
-  }, [supabase]);
-
   const access = useMemo(
-    () => deriveAccessProfile({ role, birth_year: profile.birth_year ? Number(profile.birth_year) : null }),
+    () =>
+      deriveAccessProfile({
+        role,
+        birth_year: profile.birth_year ? Number(profile.birth_year) : null
+      }),
     [role, profile.birth_year]
   );
 
   const isStudent = role === 'student';
   const isMentor = role === 'mentor';
   const isReviewerLike = role === 'alumni_readonly' || role === 'admin';
-
-  const institutionOptions = useMemo(() => {
-    if (isStudent) {
-      return institutions.filter((item) => item.kind === 'school' || item.kind === 'college');
-    }
-    return institutions;
-  }, [institutions, isStudent]);
 
   const clientError = useMemo(() => {
     const birthYear = profile.birth_year ? Number(profile.birth_year) : null;
@@ -86,7 +65,10 @@ export default function ProfileForm({ initialProfile }) {
       return 'Display name must be at least 2 characters.';
     }
 
-    if (profile.birth_year && (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)) {
+    if (
+      profile.birth_year &&
+      (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)
+    ) {
       return 'Birth year must be a valid year.';
     }
 
@@ -108,23 +90,21 @@ export default function ProfileForm({ initialProfile }) {
     setSaving(true);
     setMessage('');
 
-    const payload = new FormData();
-    payload.append('display_name', profile.display_name);
-    payload.append('username', profile.username);
-    payload.append('school_name', profile.school_name);
-    payload.append('grade_level', profile.grade_level);
-    payload.append('bio', profile.bio);
-    payload.append('birth_year', isStudent ? profile.birth_year : '');
-    payload.append('parent_upi_id', isStudent ? profile.parent_upi_id : '');
-    payload.append('institution_id_ref', profile.institution_id_ref);
-
-    if (verificationFile) {
-      payload.append('verification_doc', verificationFile);
-    }
+    const payload = {
+      display_name: profile.display_name,
+      username: profile.username,
+      school_name: profile.school_name,
+      grade_level: profile.grade_level,
+      bio: profile.bio,
+      birth_year: isStudent ? profile.birth_year : '',
+      parent_upi_id: isStudent ? profile.parent_upi_id : '',
+      institution_id_ref: profile.institution_id_ref
+    };
 
     const response = await fetch('/api/profile', {
       method: 'POST',
-      body: payload
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
 
     const result = await response.json();
@@ -144,11 +124,6 @@ export default function ProfileForm({ initialProfile }) {
     setProfile((current) => ({ ...current, [field]: value }));
   }
 
-  function handleVerificationFileChange(event) {
-    const file = event.target.files?.[0] || null;
-    setVerificationFile(file);
-  }
-
   return (
     <form
       className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
@@ -166,7 +141,11 @@ export default function ProfileForm({ initialProfile }) {
         <div className="font-black text-ink">Account mode</div>
         <p className="mt-1">
           Role: <strong>{role}</strong>
-          {access.age !== null ? <> • Age: <strong>{access.age}</strong></> : null}
+          {access.age !== null ? (
+            <>
+              {' '}• Age: <strong>{access.age}</strong>
+            </>
+          ) : null}
           {' '}• Access:{' '}
           <strong>
             {access.canSubmit
@@ -190,10 +169,12 @@ export default function ProfileForm({ initialProfile }) {
 
         <p className="mt-3 text-sm text-ink/75">
           {isStudent
-            ? 'You can upload a school/student ID if you want a verified badge. A previous-year ID is okay if the same name and institution still match.'
+            ? 'If you want a verified badge, enter your school or college name and your student ID or roll number. You can use a previous-year ID if the same name and institution still match.'
             : isMentor
-              ? 'You can upload a work or institution ID if you want a verified badge.'
-              : 'You can upload institution or reviewer proof if you want a verified badge.'}
+              ? 'If you want a verified badge, enter your institution name and your work or staff ID.'
+              : isReviewerLike
+                ? 'If you want a verified badge, enter your institution or organization name and your reviewer or work ID.'
+                : 'If you want a verified badge, add your institution name and ID reference.'}
         </p>
       </div>
 
@@ -213,21 +194,12 @@ export default function ProfileForm({ initialProfile }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <input
-            className="field"
-            list="institution-options"
-            placeholder={isStudent ? 'School / College name' : 'Institution / Organization'}
-            value={profile.school_name}
-            onChange={(e) => update('school_name', e.target.value)}
-          />
-          <datalist id="institution-options">
-            {institutionOptions.map((item) => (
-              <option key={item.name} value={item.name} />
-            ))}
-          </datalist>
-        </div>
-
+        <input
+          className="field"
+          placeholder={isStudent ? 'School / College name' : 'Institution / Organization'}
+          value={profile.school_name}
+          onChange={(e) => update('school_name', e.target.value)}
+        />
         <input
           className="field"
           placeholder={isStudent ? 'Grade / Year' : 'Department / Role'}
@@ -236,20 +208,12 @@ export default function ProfileForm({ initialProfile }) {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <input
-          className="field"
-          placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
-          value={profile.institution_id_ref}
-          onChange={(e) => update('institution_id_ref', e.target.value)}
-        />
-        <input
-          className="field"
-          type="file"
-          accept="image/png,image/jpeg,image/webp,application/pdf"
-          onChange={handleVerificationFileChange}
-        />
-      </div>
+      <input
+        className="field"
+        placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
+        value={profile.institution_id_ref}
+        onChange={(e) => update('institution_id_ref', e.target.value)}
+      />
 
       {isStudent ? (
         <div className="grid gap-4 md:grid-cols-2">
