@@ -40,12 +40,6 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid verification request.' }, { status: 400 });
   }
 
-  const { data: targetUser } = await supabase
-    .from('users')
-    .select('verification_doc_path')
-    .eq('id', targetUserId)
-    .maybeSingle();
-
   const now = new Date();
   const oneYearLater = new Date(now);
   oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
@@ -88,20 +82,6 @@ export async function POST(request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  if (targetUser?.verification_doc_path) {
-    await supabase.storage
-      .from('verification-docs')
-      .remove([targetUser.verification_doc_path]);
-
-    await supabase
-      .from('users')
-      .update({
-        verification_doc_path: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', targetUserId);
   }
 
   return NextResponse.json({ message: `Verification ${decision}d successfully.` });
