@@ -45,11 +45,7 @@ export default function ProfileForm({ initialProfile }) {
   const [saving, setSaving] = useState(false);
 
   const access = useMemo(
-    () =>
-      deriveAccessProfile({
-        role,
-        birth_year: profile.birth_year ? Number(profile.birth_year) : null
-      }),
+    () => deriveAccessProfile({ role, birth_year: profile.birth_year ? Number(profile.birth_year) : null }),
     [role, profile.birth_year]
   );
 
@@ -65,10 +61,7 @@ export default function ProfileForm({ initialProfile }) {
       return 'Display name must be at least 2 characters.';
     }
 
-    if (
-      profile.birth_year &&
-      (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)
-    ) {
+    if (profile.birth_year && (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)) {
       return 'Birth year must be a valid year.';
     }
 
@@ -141,11 +134,7 @@ export default function ProfileForm({ initialProfile }) {
         <div className="font-black text-ink">Account mode</div>
         <p className="mt-1">
           Role: <strong>{role}</strong>
-          {access.age !== null ? (
-            <>
-              {' '}• Age: <strong>{access.age}</strong>
-            </>
-          ) : null}
+          {access.age !== null ? <> • Age: <strong>{access.age}</strong></> : null}
           {' '}• Access:{' '}
           <strong>
             {access.canSubmit
