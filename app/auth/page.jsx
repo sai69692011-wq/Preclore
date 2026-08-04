@@ -215,7 +215,7 @@ export default function AuthPage() {
       </div>
 
       <h1 className="mt-3 text-4xl font-black text-ink">
-        {isSignUp ? 'Create your account' : 'Sign in'}
+        {isSignUp ? 'Create your account' : 'Log in'}
       </h1>
 
       <p className="mt-3 text-sm leading-7 text-ink/80">
@@ -339,7 +339,7 @@ export default function AuthPage() {
             disabled={loading || Boolean(emailError) || Boolean(passwordError)}
             variant="primary"
           >
-            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Log In'}
           </TactileButton>
         </div>
       </form>
@@ -354,7 +354,7 @@ export default function AuthPage() {
           }}
           className="text-sm font-semibold underline transition-opacity hover:opacity-80"
         >
-          {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+          {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Create one"}
         </button>
       </div>
     </div>
