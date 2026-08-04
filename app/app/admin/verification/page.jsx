@@ -138,8 +138,7 @@ export default function AdminVerificationPage() {
                   <p><strong>Institution:</strong> {institutionName || 'Not set'}</p>
                   <p><strong>ID Reference:</strong> {item.institution_id_ref || 'Not provided'}</p>
                   <p>
-                    <strong>Institution in your list:</strong>{' '}
-                    {matched ? 'Yes' : 'No'}
+                    <strong>Institution in your list:</strong> {matched ? 'Yes' : 'No'}
                   </p>
                 </div>
 
