@@ -310,7 +310,7 @@ export default function SubmitQuest({ isAuthenticated }) {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">6-Step Quest</div>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">6-Step Project Form</div>
             <h2 className="text-3xl font-black text-ink">
               Step {stepIndex + 1}: {step.label}
             </h2>
@@ -321,7 +321,7 @@ export default function SubmitQuest({ isAuthenticated }) {
           </div>
         </div>
 
-        <ShimmerProgress value={progress} label={`Quest progress ${Math.round(progress)}%`} />
+        <ShimmerProgress value={progress} label={`Progress ${Math.round(progress)}%`} />
 
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/70">
           {draftLoaded ? 'Draft autosave active' : 'Loading draft...'}
@@ -354,7 +354,7 @@ export default function SubmitQuest({ isAuthenticated }) {
           </TactileButton>
         ) : (
           <TactileButton onClick={handleSubmit} variant="primary" disabled={!isAuthenticated || submitting}>
-            {submitting ? 'Publishing...' : 'Publish + Reveal VQ'}
+            {submitting ? 'Publishing...' : 'Publish Project'}
           </TactileButton>
         )}
       </div>
