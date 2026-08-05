@@ -158,7 +158,7 @@ export default function ProfileForm({ initialProfile }) {
 
         <p className="mt-3 text-sm text-ink/75">
           {isStudent
-            ? 'If you want a verified badge, enter your school or college name and your student ID or roll number. You can use a previous-year ID if the same name and institution still match.'
+            ? 'If you want a verified badge, enter your school or college name and your student ID or roll number.'
             : isMentor
               ? 'If you want a verified badge, enter your institution name and your work or staff ID.'
               : isReviewerLike
