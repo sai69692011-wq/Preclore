@@ -140,7 +140,7 @@ export default function AuthPage() {
       }
 
       setLoading(false);
-      setMessage('Your account has been created. You can now sign in.');
+      setMessage('Your account has been created. You can now log in.');
       setIsSignUp(false);
       return;
     }
@@ -198,7 +198,7 @@ export default function AuthPage() {
 
         <div className="mt-6 flex flex-wrap gap-3">
           <TactileButton onClick={() => router.push('/profile')} variant="primary">
-            Go to Profile
+            Go to My Profile
           </TactileButton>
           <TactileButton onClick={signOut} variant="ghost">
             Sign Out
@@ -263,9 +263,13 @@ export default function AuthPage() {
                 className="field"
               >
                 <option value="student">Student</option>
-                <option value="alumni_readonly">Guest / Viewer</option>
+                <option value="alumni_readonly">Teacher / Reviewer / NGO / Guest</option>
               </select>
             </div>
+
+            <p className="text-xs text-ink/70">
+              Teacher, reviewer, and NGO accounts can sign up here too. Extra access or trust badges may need manual review later.
+            </p>
           </>
         ) : null}
 
