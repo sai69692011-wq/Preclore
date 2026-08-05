@@ -2,24 +2,24 @@ import TactileButton from '@/components/ui/tactile-button';
 
 const navItems = [
   { href: '/', label: 'Home' },
-  { href: '/submit', label: 'Quest' },
-  { href: '/journal', label: 'Journal' },
-  { href: '/support', label: 'Support Mission' },
-  { href: '/payment', label: 'Payment' },
-  { href: '/connections', label: 'Connections' },
-  { href: '/profile', label: 'Profile' },
-  { href: '/auth', label: 'Auth' }
+  { href: '/submit', label: 'Add Project' },
+  { href: '/journal', label: 'Projects' },
+  { href: '/support', label: 'Support' },
+  { href: '/payment', label: 'Donate' },
+  { href: '/connections', label: 'Requests' },
+  { href: '/profile', label: 'My Profile' },
+  { href: '/auth', label: 'Login' }
 ];
 
 export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <img
             src="/preclore-logo.webp"
             alt="Preclore logo"
-            className="h-14 w-14 object-contain"
+            className="h-12 w-12 object-contain"
           />
 
           <div>
@@ -27,7 +27,7 @@ export default function SiteHeader() {
               Preclore v2.4
             </div>
             <div className="text-lg font-black text-ink">
-              Public Good Registry
+              Student Research Platform
             </div>
           </div>
         </div>
