@@ -17,8 +17,29 @@ function isValidPassword(password) {
 
 function normalizeRole(role) {
   if (role === 'student') return 'student';
-  if (role === 'alumni_readonly') return 'alumni_readonly';
+  if (role === 'teacher_reviewer') return 'alumni_readonly';
+  if (role === 'guest_viewer') return 'alumni_readonly';
   return 'student';
+}
+
+function simplifyAuthError(message = '') {
+  const lower = String(message).toLowerCase();
+
+  if (
+    lower.includes('password should contain') ||
+    lower.includes('uppercase') ||
+    lower.includes('lowercase') ||
+    lower.includes('special character') ||
+    lower.includes('number')
+  ) {
+    return 'Your password is being blocked by Supabase password rules. Please relax those rules in Supabase if you only want a simple password.';
+  }
+
+  if (lower.includes('invalid login credentials')) {
+    return 'That email or password does not match. Please try again.';
+  }
+
+  return message || 'Something went wrong. Please try again.';
 }
 
 export default function AuthPage() {
@@ -34,7 +55,7 @@ export default function AuthPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   const emailError = useMemo(() => {
     if (!email) return '';
@@ -43,7 +64,7 @@ export default function AuthPage() {
 
   const passwordError = useMemo(() => {
     if (!password) return '';
-    return isValidPassword(password) ? '' : 'Please use at least 8 characters for your password.';
+    return isValidPassword(password) ? '' : 'Please use at least 8 characters.';
   }, [password]);
 
   useEffect(() => {
@@ -97,17 +118,17 @@ export default function AuthPage() {
     event.preventDefault();
     setLoading(true);
     setMessage('');
-    setError('');
+    setFormError('');
 
     if (!isValidEmail(email)) {
       setLoading(false);
-      setError('Please enter a valid email address.');
+      setFormError('Please enter a valid email address.');
       return;
     }
 
     if (!isValidPassword(password)) {
       setLoading(false);
-      setError('Please use at least 8 characters for your password.');
+      setFormError('Please use at least 8 characters for your password.');
       return;
     }
 
@@ -127,7 +148,7 @@ export default function AuthPage() {
 
       if (signUpError) {
         setLoading(false);
-        setError(signUpError.message);
+        setFormError(simplifyAuthError(signUpError.message));
         return;
       }
 
@@ -152,7 +173,7 @@ export default function AuthPage() {
 
     if (signInError) {
       setLoading(false);
-      setError(signInError.message);
+      setFormError(simplifyAuthError(signInError.message));
       return;
     }
 
@@ -169,12 +190,12 @@ export default function AuthPage() {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setMessage('Signed out successfully.');
-    setError('');
+    setFormError('');
   }
 
   if (checkingSession) {
     return (
-      <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
+      <div className="mx-auto max-w-2xl rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]">
         <p className="text-sm font-semibold text-ink">Checking your session...</p>
       </div>
     );
@@ -182,12 +203,12 @@ export default function AuthPage() {
 
   if (currentUser) {
     return (
-      <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
+      <div className="mx-auto max-w-2xl rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]">
         <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
           Signed In
         </div>
 
-        <h1 className="mt-3 text-4xl font-black text-ink">You are already signed in</h1>
+        <h1 className="mt-3 text-3xl font-black text-ink">You are already logged in</h1>
         <p className="mt-2 break-all text-sm text-ink/80">{currentUser.email}</p>
 
         {message ? (
@@ -209,12 +230,12 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
+    <div className="mx-auto max-w-2xl rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]">
       <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
         Account
       </div>
 
-      <h1 className="mt-3 text-4xl font-black text-ink">
+      <h1 className="mt-3 text-3xl font-black text-ink">
         {isSignUp ? 'Create your account' : 'Log in'}
       </h1>
 
@@ -223,12 +244,6 @@ export default function AuthPage() {
           ? 'Use your email and create any password you want for Preclore.'
           : 'Enter your email and the password you created for Preclore.'}
       </p>
-
-      {error ? (
-        <div className="mt-4 rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
-          {error}
-        </div>
-      ) : null}
 
       {message ? (
         <div className="mt-4 rounded-2xl border-2 border-ink bg-butter p-3 text-sm font-semibold text-ink">
@@ -263,7 +278,8 @@ export default function AuthPage() {
                 className="field"
               >
                 <option value="student">Student</option>
-                <option value="alumni_readonly">Teacher / Reviewer / NGO / Guest</option>
+                <option value="teacher_reviewer">Teacher / Reviewer / NGO</option>
+                <option value="guest_viewer">Guest / Viewer</option>
               </select>
             </div>
 
@@ -317,6 +333,12 @@ export default function AuthPage() {
           </div>
         ) : null}
 
+        {formError ? (
+          <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
+            {formError}
+          </div>
+        ) : null}
+
         {isSignUp ? (
           <p className="mt-4 text-center text-xs text-ink/70">
             By signing up, you agree to our{' '}
@@ -353,7 +375,7 @@ export default function AuthPage() {
           type="button"
           onClick={() => {
             setIsSignUp(!isSignUp);
-            setError('');
+            setFormError('');
             setMessage('');
           }}
           className="text-sm font-semibold underline transition-opacity hover:opacity-80"
