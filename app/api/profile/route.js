@@ -29,32 +29,26 @@ function allowedVerificationMime(file) {
   return ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'].includes(file.type);
 }
 
-function scoreVerification({ displayName, schoolName, institutionIdRef, hasFile }) {
+function scoreVerification({ displayName, schoolName, hasFile }) {
   let score = 0;
   const flags = [];
 
   if (displayName) {
-    score += 30;
+    score += 40;
   } else {
     flags.push('name_missing');
   }
 
   if (schoolName) {
-    score += 25;
+    score += 30;
   } else {
     flags.push('institution_missing');
   }
 
-  if (institutionIdRef) {
-    score += 20;
-  } else {
-    flags.push('id_reference_missing');
-  }
-
   if (hasFile) {
-    score += 25;
+    score += 30;
   } else {
-    flags.push('proof_file_missing');
+    flags.push('document_missing');
   }
 
   return { score, flags };
@@ -75,7 +69,7 @@ export async function POST(request) {
   const { data: existingProfile } = await supabase
     .from('users')
     .select(
-      'role, verification_status, verification_kind, institution_id_ref, school_name, verification_doc_path'
+      'role, verification_status, verification_kind, school_name, verification_doc_path'
     )
     .eq('id', user.id)
     .maybeSingle();
@@ -90,8 +84,6 @@ export async function POST(request) {
   const bio = normalizeText(formData.get('bio')).slice(0, 600) || null;
   const birthYear = isStudent && formData.get('birth_year') ? Number(formData.get('birth_year')) : null;
   const parentUpiId = isStudent ? normalizeText(formData.get('parent_upi_id')) || null : null;
-
-  const submittedInstitutionId = normalizeText(formData.get('institution_id_ref')).slice(0, 120);
   const verificationDoc = formData.get('verification_doc');
   const currentYear = new Date().getFullYear();
 
@@ -112,14 +104,9 @@ export async function POST(request) {
 
   let verificationStatus = existingProfile?.verification_status || 'unverified';
   let verificationKind = existingProfile?.verification_kind || null;
-  let institutionIdRef = existingProfile?.institution_id_ref || null;
   let verificationDocPath = existingProfile?.verification_doc_path || null;
   let verificationFlags = [];
   let verificationScore = 0;
-
-  if (submittedInstitutionId) {
-    institutionIdRef = submittedInstitutionId;
-  }
 
   let hasFile = false;
 
@@ -146,13 +133,12 @@ export async function POST(request) {
     hasFile = true;
   }
 
-  const verificationRequested = Boolean(schoolName) || Boolean(institutionIdRef) || hasFile;
+  const verificationRequested = Boolean(schoolName) || hasFile;
 
   if (verificationRequested) {
     const automation = scoreVerification({
       displayName,
       schoolName,
-      institutionIdRef,
       hasFile
     });
 
@@ -177,7 +163,6 @@ export async function POST(request) {
     birth_year: birthYear,
     parent_upi_id: parentUpiId,
     institution_name: schoolName,
-    institution_id_ref: institutionIdRef,
     verification_kind: verificationKind,
     verification_status: verificationStatus,
     verification_doc_path: verificationDocPath,
