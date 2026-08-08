@@ -2,15 +2,25 @@ import { notFound } from 'next/navigation';
 import { deriveAccessProfile } from '@/lib/access';
 import FollowRequestButton from '@/components/support/follow-request-button';
 import UpiSupportCard from '@/components/support/upi-support-card';
+import ReportButton from '@/components/ui/report-button';
 import TierBadge from '@/components/ui/tier-badge';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/server';
 
 function verificationLabel(role, status) {
-  if (status !== 'verified') return null;
-  if (role === 'student') return 'Verified Student';
-  if (role === 'mentor') return 'Verified Mentor';
-  return 'Verified Reviewer';
+  if (status === 'verified') {
+    if (role === 'student') return 'Verified Student';
+    if (role === 'mentor') return 'Verified Mentor';
+    return 'Verified Reviewer';
+  }
+
+  if (status === 'auto_checked') {
+    if (role === 'student') return 'Auto-Checked Student';
+    if (role === 'mentor') return 'Auto-Checked Mentor';
+    return 'Auto-Checked Reviewer';
+  }
+
+  return null;
 }
 
 export default async function ProjectPage({ params }) {
@@ -166,8 +176,11 @@ export default async function ProjectPage({ params }) {
           <ul className="mt-4 space-y-3 text-sm leading-6 text-ink/80">
             <li>• Projects publish instantly after submission.</li>
             <li>• Extra proof and extra details are optional.</li>
-            <li>• Verified badges are identity trust indicators, not certification.</li>
+            <li>• Verification badges are trust signals, not official certification.</li>
           </ul>
+          <div className="mt-4">
+            <ReportButton targetUserId={project.researcher_id} />
+          </div>
         </div>
 
         {needsFunding ? (
