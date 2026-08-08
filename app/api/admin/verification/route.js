@@ -36,7 +36,7 @@ export async function POST(request) {
 
   const { targetUserId, decision, note } = body;
 
-  if (!targetUserId || !['approve', 'reject', 'expired'].includes(decision)) {
+  if (!targetUserId || !['approve', 'reject', 'expired', 'revoke'].includes(decision)) {
     return NextResponse.json({ error: 'Invalid verification request.' }, { status: 400 });
   }
 
@@ -71,6 +71,14 @@ export async function POST(request) {
     updatePayload = {
       ...updatePayload,
       verification_status: 'expired',
+      verification_expires_at: now.toISOString()
+    };
+  }
+
+  if (decision === 'revoke') {
+    updatePayload = {
+      ...updatePayload,
+      verification_status: 'revoked',
       verification_expires_at: now.toISOString()
     };
   }
