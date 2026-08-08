@@ -6,10 +6,19 @@ import TierBadge from '@/components/ui/tier-badge';
 import { PROJECT_TAGS } from '@/lib/constants';
 
 function verificationLabel(role, status) {
-  if (status !== 'verified') return null;
-  if (role === 'student') return 'Verified Student';
-  if (role === 'mentor') return 'Verified Mentor';
-  return 'Verified Reviewer';
+  if (status === 'verified') {
+    if (role === 'student') return 'Verified Student';
+    if (role === 'mentor') return 'Verified Mentor';
+    return 'Verified Reviewer';
+  }
+
+  if (status === 'auto_checked') {
+    if (role === 'student') return 'Auto-Checked Student';
+    if (role === 'mentor') return 'Auto-Checked Mentor';
+    return 'Auto-Checked Reviewer';
+  }
+
+  return null;
 }
 
 export default function JournalBrowser({ projects }) {
