@@ -60,7 +60,6 @@ export default function ProfileForm({ initialProfile }) {
     bio: initialProfile?.bio || '',
     parent_upi_id: initialProfile?.parent_upi_id || '',
     birth_year: initialProfile?.birth_year ? String(initialProfile.birth_year) : '',
-    institution_id_ref: initialProfile?.institution_id_ref || '',
     verification_status: initialProfile?.verification_status || 'unverified'
   });
 
@@ -69,7 +68,11 @@ export default function ProfileForm({ initialProfile }) {
   const [saving, setSaving] = useState(false);
 
   const access = useMemo(
-    () => deriveAccessProfile({ role, birth_year: profile.birth_year ? Number(profile.birth_year) : null }),
+    () =>
+      deriveAccessProfile({
+        role,
+        birth_year: profile.birth_year ? Number(profile.birth_year) : null
+      }),
     [role, profile.birth_year]
   );
 
@@ -85,7 +88,10 @@ export default function ProfileForm({ initialProfile }) {
       return 'Display name must be at least 2 characters.';
     }
 
-    if (profile.birth_year && (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)) {
+    if (
+      profile.birth_year &&
+      (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)
+    ) {
       return 'Birth year must be a valid year.';
     }
 
@@ -115,7 +121,6 @@ export default function ProfileForm({ initialProfile }) {
     payload.append('bio', profile.bio);
     payload.append('birth_year', isStudent ? profile.birth_year : '');
     payload.append('parent_upi_id', isStudent ? profile.parent_upi_id : '');
-    payload.append('institution_id_ref', profile.institution_id_ref);
 
     if (verificationFile) {
       payload.append('verification_doc', verificationFile);
@@ -155,7 +160,7 @@ export default function ProfileForm({ initialProfile }) {
     >
       <div>
         <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Profile</div>
-        <h2 className="mt-2 text-2xl font-black text-ink">Your public details</h2>
+        <h2 className="mt-2 text-2xl font-black text-ink">Your details</h2>
         <p className="mt-2 text-sm text-ink/75">
           This is how your name and institution appear on Preclore.
         </p>
@@ -165,34 +170,12 @@ export default function ProfileForm({ initialProfile }) {
         <div className="font-black text-ink">Account type</div>
         <p className="mt-1">
           Type: <strong>{readableRole(role)}</strong>
-          {access.age !== null ? <> • Age: <strong>{access.age}</strong></> : null}
+          {access.age !== null ? (
+            <>
+              {' '}• Age: <strong>{access.age}</strong>
+            </>
+          ) : null}
           {' '}• Access: <strong>{readableAccess(access)}</strong>
-        </p>
-      </div>
-
-      <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
-        <div className="text-sm font-black text-ink">Verification (optional)</div>
-
-        <div
-          className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.2em] ${verificationTone(
-            profile.verification_status
-          )}`}
-        >
-          {verificationLabel(role, profile.verification_status)}
-        </div>
-
-        <p className="mt-3 text-sm text-ink/75">
-          {isStudent
-            ? 'If you want a verification badge, add your school or college name, your student ID or roll number, and upload a clear photo or PDF of your institution ID.'
-            : isMentor
-              ? 'If you want a verification badge, add your institution name, your work or staff ID, and upload a clear photo or PDF of your institution ID.'
-              : isReviewerLike
-                ? 'If you want a verification badge, add your institution or organization name, your ID/reference, and upload a clear photo or PDF of your institution ID.'
-                : 'If you want a verification badge, add your institution details and upload a clear supporting document.'}
-        </p>
-
-        <p className="mt-2 text-xs text-ink/65">
-          Accepted file types: JPG, PNG, WEBP, or PDF. This file is used only for verification review.
         </p>
       </div>
 
@@ -226,31 +209,6 @@ export default function ProfileForm({ initialProfile }) {
         />
       </div>
 
-      <input
-        className="field"
-        placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
-        value={profile.institution_id_ref}
-        onChange={(e) => update('institution_id_ref', e.target.value)}
-      />
-
-      <div className="space-y-2">
-        <input
-          className="field"
-          type="file"
-          accept="image/png,image/jpeg,image/webp,application/pdf"
-          onChange={handleVerificationFileChange}
-        />
-        {verificationFile ? (
-          <div className="rounded-xl border border-ink/20 bg-white/70 px-3 py-2 text-sm text-ink/80">
-            Selected file: <strong>{verificationFile.name}</strong>
-          </div>
-        ) : (
-          <div className="text-xs text-ink/65">
-            No file selected yet.
-          </div>
-        )}
-      </div>
-
       {isStudent ? (
         <div className="grid gap-4 md:grid-cols-2">
           <input
@@ -275,6 +233,49 @@ export default function ProfileForm({ initialProfile }) {
         value={profile.bio}
         onChange={(e) => update('bio', e.target.value)}
       />
+
+      <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
+        <div className="text-sm font-black text-ink">Verification (optional)</div>
+
+        <div
+          className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.2em] ${verificationTone(
+            profile.verification_status
+          )}`}
+        >
+          {verificationLabel(role, profile.verification_status)}
+        </div>
+
+        <p className="mt-3 text-sm text-ink/75">
+          {isStudent
+            ? 'If you want a verification badge, upload your school or college ID.'
+            : isMentor
+              ? 'If you want a verification badge, upload your school or office ID.'
+              : isReviewerLike
+                ? 'If you want a verification badge, upload your organization or office ID.'
+                : 'If you want a verification badge, upload an institution ID.'}
+        </p>
+
+        <p className="mt-2 text-xs text-ink/65">
+          Upload your ID here for verification. Accepted file types: JPG, PNG, WEBP, or PDF. This file is private and used only for verification review.
+        </p>
+
+        <div className="mt-3 space-y-2">
+          <input
+            className="field"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            onChange={handleVerificationFileChange}
+          />
+
+          {verificationFile ? (
+            <div className="rounded-xl border border-ink/20 bg-white/70 px-3 py-2 text-sm text-ink/80">
+              Selected file: <strong>{verificationFile.name}</strong>
+            </div>
+          ) : (
+            <div className="text-xs text-ink/65">No file selected yet.</div>
+          )}
+        </div>
+      </div>
 
       {clientError ? (
         <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
