@@ -12,16 +12,25 @@ function verificationLabel(role, status) {
     return 'Verified Reviewer';
   }
 
-  if (status === 'pending') return 'Verification Pending';
-  if (status === 'rejected') return 'Verification Rejected';
-  if (status === 'expired') return 'Verification Expired';
+  if (status === 'auto_checked') {
+    if (role === 'student') return 'Auto-Checked Student';
+    if (role === 'mentor') return 'Auto-Checked Mentor';
+    return 'Auto-Checked Reviewer';
+  }
+
+  if (status === 'needs_review') return 'Needs Review';
+  if (status === 'pending') return 'Pending';
+  if (status === 'rejected') return 'Rejected';
+  if (status === 'expired') return 'Expired';
+  if (status === 'revoked') return 'Revoked';
   return 'Unverified';
 }
 
 function verificationTone(status) {
   if (status === 'verified') return 'bg-mint border-ink text-ink';
-  if (status === 'pending') return 'bg-butter border-ink text-ink';
-  if (status === 'rejected') return 'bg-peach border-ink text-ink';
+  if (status === 'auto_checked') return 'bg-sky border-ink text-ink';
+  if (status === 'pending' || status === 'needs_review') return 'bg-butter border-ink text-ink';
+  if (status === 'rejected' || status === 'revoked') return 'bg-peach border-ink text-ink';
   if (status === 'expired') return 'bg-lilac border-ink text-ink';
   return 'bg-white/70 border-ink/30 text-ink/70';
 }
@@ -41,6 +50,7 @@ export default function ProfileForm({ initialProfile }) {
     verification_status: initialProfile?.verification_status || 'unverified'
   });
 
+  const [verificationFile, setVerificationFile] = useState(null);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -83,21 +93,23 @@ export default function ProfileForm({ initialProfile }) {
     setSaving(true);
     setMessage('');
 
-    const payload = {
-      display_name: profile.display_name,
-      username: profile.username,
-      school_name: profile.school_name,
-      grade_level: profile.grade_level,
-      bio: profile.bio,
-      birth_year: isStudent ? profile.birth_year : '',
-      parent_upi_id: isStudent ? profile.parent_upi_id : '',
-      institution_id_ref: profile.institution_id_ref
-    };
+    const payload = new FormData();
+    payload.append('display_name', profile.display_name);
+    payload.append('username', profile.username);
+    payload.append('school_name', profile.school_name);
+    payload.append('grade_level', profile.grade_level);
+    payload.append('bio', profile.bio);
+    payload.append('birth_year', isStudent ? profile.birth_year : '');
+    payload.append('parent_upi_id', isStudent ? profile.parent_upi_id : '');
+    payload.append('institution_id_ref', profile.institution_id_ref);
+
+    if (verificationFile) {
+      payload.append('verification_doc', verificationFile);
+    }
 
     const response = await fetch('/api/profile', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: payload
     });
 
     const result = await response.json();
@@ -115,6 +127,11 @@ export default function ProfileForm({ initialProfile }) {
 
   function update(field, value) {
     setProfile((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleVerificationFileChange(event) {
+    const file = event.target.files?.[0] || null;
+    setVerificationFile(file);
   }
 
   return (
@@ -158,12 +175,12 @@ export default function ProfileForm({ initialProfile }) {
 
         <p className="mt-3 text-sm text-ink/75">
           {isStudent
-            ? 'If you want a verified badge, enter your school or college name and your student ID or roll number.'
+            ? 'If you want a verification badge, enter your school or college name, your student ID or roll number, and upload a clear photo of your institution ID.'
             : isMentor
-              ? 'If you want a verified badge, enter your institution name and your work or staff ID.'
+              ? 'If you want a verification badge, enter your institution name, your work or staff ID, and upload a clear institution ID.'
               : isReviewerLike
-                ? 'If you want a verified badge, enter your institution or organization name and your reviewer or work ID.'
-                : 'If you want a verified badge, add your institution name and ID reference.'}
+                ? 'If you want a verification badge, enter your institution or organization name, your ID reference, and upload a clear institution ID.'
+                : 'If you want a verification badge, add your institution name, ID reference, and a clear institution ID image.'}
         </p>
       </div>
 
@@ -197,12 +214,20 @@ export default function ProfileForm({ initialProfile }) {
         />
       </div>
 
-      <input
-        className="field"
-        placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
-        value={profile.institution_id_ref}
-        onChange={(e) => update('institution_id_ref', e.target.value)}
-      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <input
+          className="field"
+          placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
+          value={profile.institution_id_ref}
+          onChange={(e) => update('institution_id_ref', e.target.value)}
+        />
+        <input
+          className="field"
+          type="file"
+          accept="image/png,image/jpeg,image/webp,application/pdf"
+          onChange={handleVerificationFileChange}
+        />
+      </div>
 
       {isStudent ? (
         <div className="grid gap-4 md:grid-cols-2">
