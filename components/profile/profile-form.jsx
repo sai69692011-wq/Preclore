@@ -19,11 +19,11 @@ function verificationLabel(role, status) {
   }
 
   if (status === 'needs_review') return 'Needs Review';
-  if (status === 'pending') return 'Pending';
+  if (status === 'pending') return 'Pending Review';
   if (status === 'rejected') return 'Rejected';
   if (status === 'expired') return 'Expired';
   if (status === 'revoked') return 'Revoked';
-  return 'Unverified';
+  return 'Not Verified';
 }
 
 function verificationTone(status) {
@@ -33,6 +33,20 @@ function verificationTone(status) {
   if (status === 'rejected' || status === 'revoked') return 'bg-peach border-ink text-ink';
   if (status === 'expired') return 'bg-lilac border-ink text-ink';
   return 'bg-white/70 border-ink/30 text-ink/70';
+}
+
+function readableRole(role) {
+  if (role === 'student') return 'Student';
+  if (role === 'mentor') return 'Teacher / Mentor';
+  if (role === 'admin') return 'Admin';
+  if (role === 'alumni_readonly') return 'Teacher / Reviewer / NGO / Guest';
+  return 'User';
+}
+
+function readableAccess(access) {
+  if (access.canSubmit) return 'Can post projects';
+  if (access.canRequestProtectedSupport) return 'Can request protected access';
+  return 'Can browse and manage profile';
 }
 
 export default function ProfileForm({ initialProfile }) {
@@ -141,30 +155,24 @@ export default function ProfileForm({ initialProfile }) {
     >
       <div>
         <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Profile</div>
-        <h2 className="mt-2 text-2xl font-black text-ink">Set your public details</h2>
+        <h2 className="mt-2 text-2xl font-black text-ink">Your public details</h2>
         <p className="mt-2 text-sm text-ink/75">
-          Your public name helps people recognize your work. Private support and ID details stay protected.
+          This is how your name and institution appear on Preclore.
         </p>
       </div>
 
       <div className="rounded-2xl border-2 border-ink/30 bg-paper p-4 text-sm text-ink/80">
-        <div className="font-black text-ink">Account mode</div>
+        <div className="font-black text-ink">Account type</div>
         <p className="mt-1">
-          Role: <strong>{role}</strong>
+          Type: <strong>{readableRole(role)}</strong>
           {access.age !== null ? <> • Age: <strong>{access.age}</strong></> : null}
-          {' '}• Access:{' '}
-          <strong>
-            {access.canSubmit
-              ? 'Can submit projects'
-              : access.canRequestProtectedSupport
-                ? 'Mentor support access only'
-                : 'Read-only portfolio mode'}
-          </strong>
+          {' '}• Access: <strong>{readableAccess(access)}</strong>
         </p>
       </div>
 
       <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
         <div className="text-sm font-black text-ink">Verification (optional)</div>
+
         <div
           className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.2em] ${verificationTone(
             profile.verification_status
@@ -175,12 +183,16 @@ export default function ProfileForm({ initialProfile }) {
 
         <p className="mt-3 text-sm text-ink/75">
           {isStudent
-            ? 'If you want a verification badge, enter your school or college name, your student ID or roll number, and upload a clear photo of your institution ID.'
+            ? 'If you want a verification badge, add your school or college name, your student ID or roll number, and upload a clear photo or PDF of your institution ID.'
             : isMentor
-              ? 'If you want a verification badge, enter your institution name, your work or staff ID, and upload a clear institution ID.'
+              ? 'If you want a verification badge, add your institution name, your work or staff ID, and upload a clear photo or PDF of your institution ID.'
               : isReviewerLike
-                ? 'If you want a verification badge, enter your institution or organization name, your ID reference, and upload a clear institution ID.'
-                : 'If you want a verification badge, add your institution name, ID reference, and a clear institution ID image.'}
+                ? 'If you want a verification badge, add your institution or organization name, your ID/reference, and upload a clear photo or PDF of your institution ID.'
+                : 'If you want a verification badge, add your institution details and upload a clear supporting document.'}
+        </p>
+
+        <p className="mt-2 text-xs text-ink/65">
+          Accepted file types: JPG, PNG, WEBP, or PDF. This file is used only for verification review.
         </p>
       </div>
 
@@ -208,25 +220,35 @@ export default function ProfileForm({ initialProfile }) {
         />
         <input
           className="field"
-          placeholder={isStudent ? 'Grade / Year' : 'Department / Role'}
+          placeholder={isStudent ? 'Class / Grade / Year' : 'Role / Department'}
           value={profile.grade_level}
           onChange={(e) => update('grade_level', e.target.value)}
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <input
-          className="field"
-          placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
-          value={profile.institution_id_ref}
-          onChange={(e) => update('institution_id_ref', e.target.value)}
-        />
+      <input
+        className="field"
+        placeholder={isStudent ? 'Student ID / Roll Number (optional)' : 'Institution / Work ID (optional)'}
+        value={profile.institution_id_ref}
+        onChange={(e) => update('institution_id_ref', e.target.value)}
+      />
+
+      <div className="space-y-2">
         <input
           className="field"
           type="file"
           accept="image/png,image/jpeg,image/webp,application/pdf"
           onChange={handleVerificationFileChange}
         />
+        {verificationFile ? (
+          <div className="rounded-xl border border-ink/20 bg-white/70 px-3 py-2 text-sm text-ink/80">
+            Selected file: <strong>{verificationFile.name}</strong>
+          </div>
+        ) : (
+          <div className="text-xs text-ink/65">
+            No file selected yet.
+          </div>
+        )}
       </div>
 
       {isStudent ? (
@@ -253,6 +275,12 @@ export default function ProfileForm({ initialProfile }) {
         value={profile.bio}
         onChange={(e) => update('bio', e.target.value)}
       />
+
+      {clientError ? (
+        <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
+          {clientError}
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-3">
         <TactileButton type="submit" disabled={saving || Boolean(clientError)} variant="primary">
