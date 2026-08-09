@@ -1,5 +1,3 @@
-import Image from 'next/image';
-import logo from '../../preclore-logo.webp';
 import TactileButton from '@/components/ui/tactile-button';
 
 const navItems = [
@@ -18,13 +16,10 @@ export default function SiteHeader() {
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-center gap-3">
-          <Image
-            src={logo}
+          <img
+            src="/preclore-logo.webp"
             alt="Preclore logo"
-            width={48}
-            height={48}
             className="h-12 w-12 object-contain"
-            priority
           />
 
           <div>
