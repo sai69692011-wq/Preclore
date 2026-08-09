@@ -115,6 +115,21 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Verification proof must be an image or PDF.' }, { status: 400 });
     }
 
+    if (verificationDoc.size < 80 * 1024) {
+      return NextResponse.json({
+        error: 'This file looks too small to be a clear school or office ID. Please upload a clearer image or PDF.'
+      }, { status: 400 });
+    }
+
+    const lowerName = String(verificationDoc.name || '').toLowerCase();
+    const suspiciousWords = ['logo', 'icon', 'favicon', 'banner', 'poster'];
+
+    if (suspiciousWords.some((word) => lowerName.includes(word))) {
+      return NextResponse.json({
+        error: 'This file does not look suitable for ID checking. Please upload a clear photo or PDF of a real school, college, office, or organization ID.'
+      }, { status: 400 });
+    }
+
     const verificationPath = `${user.id}/${Date.now()}-${safeFilename(verificationDoc.name || 'verification')}`;
     const uploadResult = await supabase.storage
       .from('verification-docs')
