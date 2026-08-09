@@ -64,6 +64,7 @@ export default function ProfileForm({ initialProfile }) {
   });
 
   const [verificationFile, setVerificationFile] = useState(null);
+  const [fileError, setFileError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -110,6 +111,11 @@ export default function ProfileForm({ initialProfile }) {
       return;
     }
 
+    if (fileError) {
+      setMessage(fileError);
+      return;
+    }
+
     setSaving(true);
     setMessage('');
 
@@ -150,7 +156,68 @@ export default function ProfileForm({ initialProfile }) {
 
   function handleVerificationFileChange(event) {
     const file = event.target.files?.[0] || null;
+
+    if (!file) {
+      setVerificationFile(null);
+      setFileError('');
+      return;
+    }
+
+    const allowedTypes = [
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'application/pdf'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setVerificationFile(null);
+      setFileError('Please upload JPG, PNG, WEBP, or PDF only.');
+      return;
+    }
+
+    if (file.size < 80 * 1024) {
+      setVerificationFile(null);
+      setFileError('This file looks too small to be a clear ID. Please upload a clearer image or PDF of the full ID.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setVerificationFile(null);
+      setFileError('Please upload a file smaller than 5 MB.');
+      return;
+    }
+
+    if (file.type.startsWith('image/')) {
+      const imageUrl = URL.createObjectURL(file);
+      const img = new window.Image();
+
+      img.onload = () => {
+        const ratio = img.width / img.height;
+        URL.revokeObjectURL(imageUrl);
+
+        if (ratio > 0.9 && ratio < 1.1) {
+          setVerificationFile(null);
+          setFileError('This image looks more like a logo or square image than a full ID. Please upload a clear photo of the full school, college, office, or organization ID.');
+          return;
+        }
+
+        setVerificationFile(file);
+        setFileError('');
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(imageUrl);
+        setVerificationFile(null);
+        setFileError('This image could not be read properly. Please upload a clearer file.');
+      };
+
+      img.src = imageUrl;
+      return;
+    }
+
     setVerificationFile(file);
+    setFileError('');
   }
 
   return (
@@ -274,6 +341,12 @@ export default function ProfileForm({ initialProfile }) {
           ) : (
             <div className="text-xs text-ink/65">No file selected yet.</div>
           )}
+
+          {fileError ? (
+            <div className="rounded-xl border border-ink bg-peach px-3 py-2 text-sm font-semibold text-ink">
+              {fileError}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -284,7 +357,7 @@ export default function ProfileForm({ initialProfile }) {
       ) : null}
 
       <div className="flex items-center gap-3">
-        <TactileButton type="submit" disabled={saving || Boolean(clientError)} variant="primary">
+        <TactileButton type="submit" disabled={saving || Boolean(clientError) || Boolean(fileError)} variant="primary">
           {saving ? 'Saving...' : 'Save Profile'}
         </TactileButton>
         {message ? <span className="text-sm text-ink/75">{message}</span> : null}
