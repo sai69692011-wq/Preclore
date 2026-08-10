@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import logo from './preclore-logo.webp';
+import logo from '@/preclore-logo.webp';
 import TactileButton from '@/components/ui/tactile-button';
 
 const navItems = [
