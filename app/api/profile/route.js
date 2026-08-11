@@ -117,7 +117,7 @@ export async function POST(request) {
 
     if (verificationDoc.size < 80 * 1024) {
       return NextResponse.json({
-        error: 'This file looks too small to be a clear school or office ID. Please upload a clearer image or PDF.'
+        error: 'This file looks too small to be a clear ID. Please upload a clearer image or PDF of the full ID.'
       }, { status: 400 });
     }
 
@@ -162,9 +162,11 @@ export async function POST(request) {
     verificationKind = deriveVerificationKind(currentRole);
 
     if (verificationScore >= 90) {
-      verificationStatus = 'auto_checked';
-    } else {
+      verificationStatus = 'verified';
+    } else if (verificationScore >= 70) {
       verificationStatus = 'needs_review';
+    } else {
+      verificationStatus = 'rejected';
     }
   }
 
@@ -194,7 +196,7 @@ export async function POST(request) {
 
   return NextResponse.json({
     message: verificationRequested
-      ? 'Profile saved. Verification has been submitted for checking.'
+      ? 'Profile saved. Verification has been checked.'
       : 'Profile saved.',
     verificationStatus
   });
