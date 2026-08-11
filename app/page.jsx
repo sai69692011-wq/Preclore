@@ -76,11 +76,34 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_8px_0_0_rgba(44,43,42,1)] lg:p-8">
+        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">How to Join Preclore</div>
+        <h2 className="mt-3 text-2xl font-black text-ink lg:text-3xl">
+          Watch this quick walkthrough
+        </h2>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80 lg:text-base">
+          New here? This short video explains how students, teachers, reviewers, and NGOs can create an account and start using Preclore.
+        </p>
+
+        <div className="mt-6 overflow-hidden rounded-[24px] border-2 border-ink bg-white">
+          <div className="aspect-video w-full">
+            <iframe
+              className="h-full w-full"
+              src="https://www.youtube.com/embed/XIlHzTBiAEQ"
+              title="How to create an account on Preclore"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          ['1. Add Project', 'Post your title, type, and short description. Add links only if you want.'],
-          ['2. Get Seen', 'Your work stays visible online instead of disappearing after one event.'],
-          ['3. Choose Contact', 'Teachers, reviewers, and NGOs can request contact, but you stay in control.']
+          ['1. Create Account', 'Sign up using your email and create a password just for Preclore.'],
+          ['2. Build Profile', 'Add your name, school or organization, and basic details so people know who you are.'],
+          ['3. Add Project', 'Post your project title, short description, and any public links or proof you want to share.']
         ].map(([title, body]) => (
           <div
             key={title}
