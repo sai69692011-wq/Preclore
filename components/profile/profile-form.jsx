@@ -20,9 +20,9 @@ function verificationLabel(role, status) {
 
   if (status === 'needs_review') return 'Needs Review';
   if (status === 'pending') return 'Pending Review';
-  if (status === 'rejected') return 'Rejected';
+  if (status === 'rejected') return 'Not Accepted';
   if (status === 'expired') return 'Expired';
-  if (status === 'revoked') return 'Revoked';
+  if (status === 'revoked') return 'Removed';
   return 'Not Verified';
 }
 
