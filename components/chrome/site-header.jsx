@@ -1,19 +1,45 @@
 import Image from 'next/image';
 import logo from '@/preclore-logo.webp';
 import TactileButton from '@/components/ui/tactile-button';
+import { createClient } from '@/lib/supabase/server';
+import { deriveAccessProfile } from '@/lib/access';
 
-const navItems = [
-  { href: '/', label: 'Home' },
-  { href: '/submit', label: 'Add Project' },
-  { href: '/journal', label: 'Projects' },
-  { href: '/support', label: 'Support' },
-  { href: '/payment', label: 'Donate' },
-  { href: '/connections', label: 'Requests' },
-  { href: '/profile', label: 'My Profile' },
-  { href: '/auth', label: 'Login' }
-];
+export default async function SiteHeader() {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
 
-export default function SiteHeader() {
+  let access = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role, birth_year')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    access = deriveAccessProfile(profile || {});
+  }
+
+  const navItems = [
+    { href: '/', label: 'Home' },
+    { href: '/journal', label: 'Browse Research' },
+    { href: '/support', label: 'Support' },
+    { href: '/payment', label: 'Donate' }
+  ];
+
+  if (user && access?.canSubmit) {
+    navItems.splice(1, 0, { href: '/submit', label: 'Add Project' });
+  }
+
+  if (user) {
+    navItems.push({ href: '/connections', label: 'Requests' });
+    navItems.push({ href: '/profile', label: 'My Profile' });
+  } else {
+    navItems.push({ href: '/auth', label: 'Login' });
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-6 lg:py-4">
