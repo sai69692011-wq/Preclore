@@ -6,12 +6,56 @@ import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/browser';
 import { normalizeText } from '@/lib/utils';
 
+const AUTH_MODES = {
+  create: {
+    title: 'Create your account',
+    label: 'Create Account',
+    description: 'New here? Enter your email and we will send you a 6-digit code.',
+    emailHint: 'Use an email you can open right now.',
+    submitLabel: 'Send Code for Create Account'
+  },
+  login: {
+    title: 'Login to your account',
+    label: 'Login',
+    description: 'Already have an account? Enter the same email you used before.',
+    emailHint: 'Use the email already linked to your account.',
+    submitLabel: 'Send Code for Login'
+  }
+};
+
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeText(email));
 }
 
+function getFriendlyAuthError(message, mode) {
+  const text = normalizeText(message).toLowerCase();
+
+  if (!text) {
+    return 'Something went wrong. Please try again.';
+  }
+
+  if (text.includes('signups not allowed')) {
+    return mode === 'login'
+      ? 'This email does not have an account yet. Use Create Account first.'
+      : 'New account creation is turned off right now.';
+  }
+
+  if (text.includes('invalid login credentials')) {
+    return mode === 'login'
+      ? 'That email could not be logged in. Check the email or use Create Account first.'
+      : 'That email could not be used right now. Please try again.';
+  }
+
+  if (text.includes('otp') || text.includes('token') || text.includes('expired')) {
+    return 'That code is wrong or expired. Please try again or resend the code.';
+  }
+
+  return message;
+}
+
 export default function OtpAuth() {
   const router = useRouter();
+  const [mode, setMode] = useState('create');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState('email');
@@ -19,6 +63,7 @@ export default function OtpAuth() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  const currentMode = AUTH_MODES[mode];
   const canResend = step === 'verify' && timer === 0;
   const emailError = useMemo(() => {
     if (!email) return '';
@@ -50,21 +95,21 @@ export default function OtpAuth() {
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizeText(email),
       options: {
-        shouldCreateUser: true
+        shouldCreateUser: mode === 'create'
       }
     });
 
     setLoading(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(getFriendlyAuthError(error.message, mode));
       return;
     }
 
     setStep('verify');
     setOtp('');
     setTimer(30);
-    setMessage('OTP sent. Enter the 6-digit code from your email.');
+    setMessage(`Code sent to ${normalizeText(email)}. Enter the 6-digit code from your email.`);
   }
 
   async function handleVerifyOtp(event) {
@@ -89,27 +134,65 @@ export default function OtpAuth() {
     setLoading(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(getFriendlyAuthError(error.message, mode));
       return;
     }
 
     router.push('/profile');
   }
 
+  function handleModeChange(nextMode) {
+    setMode(nextMode);
+    setMessage('');
+
+    if (step === 'verify') {
+      setStep('email');
+      setOtp('');
+      setTimer(30);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
-      <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Supabase OTP Auth</div>
+      <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Login</div>
       <h1 className="mt-3 text-4xl font-black text-ink">
-        {step === 'email' ? 'Sign in with email OTP' : 'Verify your code'}
+        {step === 'email' ? 'Create account or login' : 'Enter your code'}
       </h1>
       <p className="mt-3 text-sm leading-7 text-ink/80">
-        {step === 'email'
-          ? 'Enter your email to receive a 6-digit verification code.'
-          : `Enter the 6-digit code sent to ${email}.`}
+        {step === 'email' ? currentMode.description : `Enter the 6-digit code sent to ${normalizeText(email)}.`}
       </p>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => handleModeChange('create')}
+          className={`rounded-[24px] border-2 p-4 text-left transition ${
+            mode === 'create' ? 'border-ink bg-mint shadow-[0_4px_0_0_rgba(44,43,42,1)]' : 'border-ink/50 bg-white'
+          }`}
+        >
+          <div className="text-lg font-black text-ink">Create Account</div>
+          <div className="mt-1 text-sm leading-6 text-ink/75">I am new here.</div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleModeChange('login')}
+          className={`rounded-[24px] border-2 p-4 text-left transition ${
+            mode === 'login' ? 'border-ink bg-butter shadow-[0_4px_0_0_rgba(44,43,42,1)]' : 'border-ink/50 bg-white'
+          }`}
+        >
+          <div className="text-lg font-black text-ink">Login</div>
+          <div className="mt-1 text-sm leading-6 text-ink/75">I already have an account.</div>
+        </button>
+      </div>
 
       {step === 'email' ? (
         <form className="mt-6 space-y-4" onSubmit={handleSendOtp}>
+          <div className="rounded-[24px] border-2 border-ink bg-paper p-4">
+            <div className="text-sm font-bold text-ink">{currentMode.title}</div>
+            <div className="mt-1 text-sm leading-6 text-ink/75">{currentMode.emailHint}</div>
+          </div>
+
           <input
             className="field"
             type="email"
@@ -117,13 +200,15 @@ export default function OtpAuth() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
+
           {emailError ? (
             <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
               {emailError}
             </div>
           ) : null}
+
           <TactileButton type="submit" disabled={loading || Boolean(emailError) || !email} variant="primary">
-            {loading ? 'Sending...' : 'Send Code'}
+            {loading ? 'Sending...' : currentMode.submitLabel}
           </TactileButton>
         </form>
       ) : (
@@ -140,7 +225,7 @@ export default function OtpAuth() {
 
           <div className="flex flex-wrap gap-3">
             <TactileButton type="submit" disabled={loading || otp.length !== 6} variant="primary">
-              {loading ? 'Verifying...' : 'Verify Code'}
+              {loading ? 'Checking...' : mode === 'create' ? 'Create Account' : 'Login'}
             </TactileButton>
 
             <TactileButton
