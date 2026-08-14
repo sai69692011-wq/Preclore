@@ -1,7 +1,12 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const siteUrl = 'https://preclore.vercel.app';
+
+type PublicProject = {
+  slug: string;
+  published_at?: string | null;
+};
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -47,10 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const { data } = await supabase.rpc('get_public_project_cards');
 
-  const projectRoutes: MetadataRoute.Sitemap = ((data || []) as Array<{
-    slug: string;
-    published_at?: string | null;
-  }>).map((project) => ({
+  const projectRoutes: MetadataRoute.Sitemap = ((data || []) as PublicProject[]).map((project) => ({
     url: `${siteUrl}/project/${project.slug}`,
     lastModified: project.published_at ? new Date(project.published_at) : new Date(),
     changeFrequency: 'weekly',
