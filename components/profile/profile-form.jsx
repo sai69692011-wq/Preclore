@@ -3,55 +3,25 @@
 import { useMemo, useState } from 'react';
 import TactileButton from '@/components/ui/tactile-button';
 import { deriveAccessProfile } from '@/lib/access';
+import { PROJECT_SLOT_LIMIT } from '@/lib/constants';
 import { isValidUpiId, normalizeText } from '@/lib/utils';
 
-function verificationLabel(role, status) {
-  if (status === 'verified') {
-    if (role === 'student') return 'Verified Student';
-    if (role === 'mentor') return 'Verified Mentor';
-    return 'Verified Reviewer';
-  }
+const ROLE_LABELS = {
+  student: 'Student',
+  mentor: 'Teacher / Reviewer / NGO',
+  admin: 'Admin',
+  alumni_readonly: 'Read-only'
+};
 
-  if (status === 'auto_checked') {
-    if (role === 'student') return 'Auto-Checked Student';
-    if (role === 'mentor') return 'Auto-Checked Mentor';
-    return 'Auto-Checked Reviewer';
-  }
-
-  if (status === 'needs_review') return 'Needs Review';
-  if (status === 'pending') return 'Pending Review';
-  if (status === 'rejected') return 'Not Accepted';
-  if (status === 'expired') return 'Expired';
-  if (status === 'revoked') return 'Removed';
-  return 'Not Verified';
+function sortProjects(projects) {
+  return [...projects].sort((a, b) => {
+    const aTime = a?.published_at ? new Date(a.published_at).getTime() : 0;
+    const bTime = b?.published_at ? new Date(b.published_at).getTime() : 0;
+    return bTime - aTime;
+  });
 }
 
-function verificationTone(status) {
-  if (status === 'verified') return 'bg-mint border-ink text-ink';
-  if (status === 'auto_checked') return 'bg-sky border-ink text-ink';
-  if (status === 'pending' || status === 'needs_review') return 'bg-butter border-ink text-ink';
-  if (status === 'rejected' || status === 'revoked') return 'bg-peach border-ink text-ink';
-  if (status === 'expired') return 'bg-lilac border-ink text-ink';
-  return 'bg-white/70 border-ink/30 text-ink/70';
-}
-
-function readableRole(role) {
-  if (role === 'student') return 'Student';
-  if (role === 'mentor') return 'Teacher / Mentor';
-  if (role === 'admin') return 'Admin';
-  if (role === 'alumni_readonly') return 'Teacher / Reviewer / NGO / Guest';
-  return 'User';
-}
-
-function readableAccess(access) {
-  if (access.canSubmit) return 'Can post projects';
-  if (access.canRequestProtectedSupport) return 'Can request protected access';
-  return 'Can browse and manage profile';
-}
-
-export default function ProfileForm({ initialProfile }) {
-  const role = initialProfile?.role || 'student';
-
+export default function ProfileForm({ initialProfile, initialProjects = [] }) {
   const [profile, setProfile] = useState({
     display_name: initialProfile?.display_name || '',
     username: initialProfile?.username || '',
@@ -60,308 +30,252 @@ export default function ProfileForm({ initialProfile }) {
     bio: initialProfile?.bio || '',
     parent_upi_id: initialProfile?.parent_upi_id || '',
     birth_year: initialProfile?.birth_year ? String(initialProfile.birth_year) : '',
-    verification_status: initialProfile?.verification_status || 'unverified'
+    role: initialProfile?.role || 'student'
   });
-
-  const [verificationFile, setVerificationFile] = useState(null);
-  const [fileError, setFileError] = useState('');
+  const [projects, setProjects] = useState(sortProjects(initialProjects));
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [busyProjectId, setBusyProjectId] = useState('');
 
   const access = useMemo(
-    () =>
-      deriveAccessProfile({
-        role,
-        birth_year: profile.birth_year ? Number(profile.birth_year) : null
-      }),
-    [role, profile.birth_year]
+    () => deriveAccessProfile({ role: profile.role, birth_year: profile.birth_year ? Number(profile.birth_year) : null }),
+    [profile.role, profile.birth_year]
   );
 
-  const isStudent = role === 'student';
-  const isMentor = role === 'mentor';
-  const isReviewerLike = role === 'alumni_readonly' || role === 'admin';
+  const activeProjects = useMemo(
+    () => projects.filter((project) => project.status === 'published'),
+    [projects]
+  );
+
+  const archivedProjects = useMemo(
+    () => projects.filter((project) => project.status === 'archived'),
+    [projects]
+  );
+
+  const slotsLeft = Math.max(PROJECT_SLOT_LIMIT - activeProjects.length, 0);
 
   const clientError = useMemo(() => {
     const birthYear = profile.birth_year ? Number(profile.birth_year) : null;
     const currentYear = new Date().getFullYear();
 
+    if (profile.birth_year && (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)) {
+      return 'Birth year must be a valid year.';
+    }
+
+    if (normalizeText(profile.parent_upi_id) && !isValidUpiId(profile.parent_upi_id)) {
+      return 'Parent UPI ID must look like parentname@bank.';
+    }
+
     if (profile.display_name && normalizeText(profile.display_name).length < 2) {
       return 'Display name must be at least 2 characters.';
     }
 
-    if (
-      profile.birth_year &&
-      (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear)
-    ) {
-      return 'Birth year must be a valid year.';
-    }
-
-    if (isStudent && normalizeText(profile.parent_upi_id) && !isValidUpiId(profile.parent_upi_id)) {
-      return 'Parent UPI ID must look like parentname@bank.';
-    }
-
     return '';
-  }, [profile.birth_year, profile.display_name, profile.parent_upi_id, isStudent]);
+  }, [profile.birth_year, profile.display_name, profile.parent_upi_id]);
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     if (clientError) {
       setMessage(clientError);
-      return;
-    }
-
-    if (fileError) {
-      setMessage(fileError);
       return;
     }
 
     setSaving(true);
     setMessage('');
 
-    const payload = new FormData();
-    payload.append('display_name', profile.display_name);
-    payload.append('username', profile.username);
-    payload.append('school_name', profile.school_name);
-    payload.append('grade_level', profile.grade_level);
-    payload.append('bio', profile.bio);
-    payload.append('birth_year', isStudent ? profile.birth_year : '');
-    payload.append('parent_upi_id', isStudent ? profile.parent_upi_id : '');
-
-    if (verificationFile) {
-      payload.append('verification_doc', verificationFile);
-    }
-
     const response = await fetch('/api/profile', {
       method: 'POST',
-      body: payload
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile)
     });
 
     const result = await response.json();
     setSaving(false);
+    setMessage(result.error || result.message || 'Saved.');
+  }
 
-    if (result.verificationStatus) {
-      setProfile((current) => ({
-        ...current,
-        verification_status: result.verificationStatus
-      }));
+  async function handleProjectAction(projectId, action) {
+    setBusyProjectId(projectId);
+    setMessage('');
+
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+
+    const result = await response.json();
+    setBusyProjectId('');
+
+    if (!response.ok) {
+      setMessage(result.error || 'Could not update project.');
+      return;
     }
 
-    setMessage(result.error || result.message || 'Saved.');
+    setProjects((current) => sortProjects(current.map((project) => (
+      project.id === projectId ? { ...project, ...result.project } : project
+    ))));
+    setMessage(result.message || 'Project updated.');
   }
 
   function update(field, value) {
     setProfile((current) => ({ ...current, [field]: value }));
   }
 
-  function handleVerificationFileChange(event) {
-    const file = event.target.files?.[0] || null;
-
-    if (!file) {
-      setVerificationFile(null);
-      setFileError('');
-      return;
-    }
-
-    const allowedTypes = [
-      'image/png',
-      'image/jpeg',
-      'image/webp',
-      'application/pdf'
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      setVerificationFile(null);
-      setFileError('Please upload JPG, PNG, WEBP, or PDF only.');
-      return;
-    }
-
-    if (file.size < 80 * 1024) {
-      setVerificationFile(null);
-      setFileError('This file looks too small to be a clear ID. Please upload a clearer image or PDF of the full ID.');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setVerificationFile(null);
-      setFileError('Please upload a file smaller than 5 MB.');
-      return;
-    }
-
-    if (file.type.startsWith('image/')) {
-      const imageUrl = URL.createObjectURL(file);
-      const img = new window.Image();
-
-      img.onload = () => {
-        const ratio = img.width / img.height;
-        URL.revokeObjectURL(imageUrl);
-
-        if (ratio > 0.9 && ratio < 1.1) {
-          setVerificationFile(null);
-          setFileError('This image looks more like a logo or square image than a full ID. Please upload a clear photo of the full school, college, office, or organization ID.');
-          return;
-        }
-
-        setVerificationFile(file);
-        setFileError('');
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(imageUrl);
-        setVerificationFile(null);
-        setFileError('This image could not be read properly. Please upload a clearer file.');
-      };
-
-      img.src = imageUrl;
-      return;
-    }
-
-    setVerificationFile(file);
-    setFileError('');
-  }
-
   return (
-    <form
-      className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
-      onSubmit={handleSubmit}
-    >
-      <div>
-        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Profile</div>
-        <h2 className="mt-2 text-2xl font-black text-ink">Your details</h2>
-        <p className="mt-2 text-sm text-ink/75">
-          This is how your name and institution appear on Preclore.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <form className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]" onSubmit={handleSubmit}>
+        <div>
+          <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">My Profile</div>
+          <h2 className="mt-2 text-2xl font-black text-ink">Set your public details</h2>
+          <p className="mt-2 text-sm text-ink/75">
+            Add the basic details people should see before they view your work.
+          </p>
+        </div>
 
-      <div className="rounded-2xl border-2 border-ink/30 bg-paper p-4 text-sm text-ink/80">
-        <div className="font-black text-ink">Account type</div>
-        <p className="mt-1">
-          Type: <strong>{readableRole(role)}</strong>
-          {access.age !== null ? (
-            <>
-              {' '}• Age: <strong>{access.age}</strong>
-            </>
-          ) : null}
-          {' '}• Access: <strong>{readableAccess(access)}</strong>
-        </p>
-      </div>
+        <div className="rounded-2xl border-2 border-ink/30 bg-paper p-4 text-sm text-ink/80">
+          <div className="font-black text-ink">Account type</div>
+          <p className="mt-1">
+            <strong>{ROLE_LABELS[profile.role] || 'Student'}</strong>
+            {access.age !== null ? <> • Age: <strong>{access.age}</strong></> : null}
+            {' '}• Access: <strong>{access.canSubmit ? 'Can add projects' : access.canRequestProtectedSupport ? 'Can review and request contact' : 'Read-only'}</strong>
+          </p>
+        </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <input
-          className="field"
-          placeholder="Display name"
-          value={profile.display_name}
-          onChange={(e) => update('display_name', e.target.value)}
-        />
-        <input
-          className="field"
-          placeholder="Username"
-          value={profile.username}
-          onChange={(e) => update('username', e.target.value)}
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <input
-          className="field"
-          placeholder={isStudent ? 'School / College name' : 'Institution / Organization'}
-          value={profile.school_name}
-          onChange={(e) => update('school_name', e.target.value)}
-        />
-        <input
-          className="field"
-          placeholder={isStudent ? 'Class / Grade / Year' : 'Role / Department'}
-          value={profile.grade_level}
-          onChange={(e) => update('grade_level', e.target.value)}
-        />
-      </div>
-
-      {isStudent ? (
         <div className="grid gap-4 md:grid-cols-2">
-          <input
-            className="field"
-            placeholder="Birth year"
-            value={profile.birth_year}
-            onChange={(e) => update('birth_year', e.target.value)}
-            inputMode="numeric"
-          />
-          <input
-            className="field"
-            placeholder="Parent UPI ID (optional)"
-            value={profile.parent_upi_id}
-            onChange={(e) => update('parent_upi_id', e.target.value)}
-          />
-        </div>
-      ) : null}
-
-      <textarea
-        className="field min-h-28"
-        placeholder="Bio / research focus"
-        value={profile.bio}
-        onChange={(e) => update('bio', e.target.value)}
-      />
-
-      <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
-        <div className="text-sm font-black text-ink">Verification (optional)</div>
-
-        <div
-          className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.2em] ${verificationTone(
-            profile.verification_status
-          )}`}
-        >
-          {verificationLabel(role, profile.verification_status)}
+          <input className="field" placeholder="Your name" value={profile.display_name} onChange={(e) => update('display_name', e.target.value)} />
+          <input className="field" placeholder="Username" value={profile.username} onChange={(e) => update('username', e.target.value)} />
+          <input className="field" placeholder="School / Organization" value={profile.school_name} onChange={(e) => update('school_name', e.target.value)} />
+          <input className="field" placeholder="Class / Role" value={profile.grade_level} onChange={(e) => update('grade_level', e.target.value)} />
+          <input className="field" placeholder="Birth year" value={profile.birth_year} onChange={(e) => update('birth_year', e.target.value)} inputMode="numeric" />
+          <input className="field" placeholder="Account type" value={ROLE_LABELS[profile.role] || 'Student'} disabled readOnly />
         </div>
 
-        <p className="mt-3 text-sm text-ink/75">
-          {isStudent
-            ? 'If you want a verification badge, upload your school or college ID.'
-            : isMentor
-              ? 'If you want a verification badge, upload your school or office ID.'
-              : isReviewerLike
-                ? 'If you want a verification badge, upload your organization or office ID.'
-                : 'If you want a verification badge, upload an institution ID.'}
-        </p>
+        <textarea className="field min-h-28" placeholder="Short bio" value={profile.bio} onChange={(e) => update('bio', e.target.value)} />
 
-        <p className="mt-2 text-xs text-ink/65">
-          Upload your ID here for verification. Accepted file types: JPG, PNG, WEBP, or PDF. This file is private and used only for verification review.
-        </p>
+        <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-paper p-4">
+          <div className="text-sm font-black text-ink">Parent UPI ID</div>
+          <p className="mt-1 text-sm text-ink/75">
+            Keep this private here. It is only shown after an approved mentor or reviewer request.
+          </p>
+          <input className="field mt-3" placeholder="parentname@upi" value={profile.parent_upi_id} onChange={(e) => update('parent_upi_id', e.target.value)} />
+        </div>
 
-        <div className="mt-3 space-y-2">
-          <input
-            className="field"
-            type="file"
-            accept="image/png,image/jpeg,image/webp,application/pdf"
-            onChange={handleVerificationFileChange}
-          />
+        <div className="flex items-center gap-3">
+          <TactileButton type="submit" disabled={saving || Boolean(clientError)} variant="primary">{saving ? 'Saving...' : 'Save Profile'}</TactileButton>
+          {message ? <span className="text-sm text-ink/75">{message}</span> : null}
+        </div>
+      </form>
 
-          {verificationFile ? (
-            <div className="rounded-xl border border-ink/20 bg-white/70 px-3 py-2 text-sm text-ink/80">
-              Selected file: <strong>{verificationFile.name}</strong>
-            </div>
-          ) : (
-            <div className="text-xs text-ink/65">No file selected yet.</div>
-          )}
+      <section className="space-y-4 rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Project Slots</div>
+            <h2 className="mt-2 text-2xl font-black text-ink">{activeProjects.length} of {PROJECT_SLOT_LIMIT} live projects used</h2>
+            <p className="mt-2 text-sm leading-6 text-ink/80">
+              Keep up to {PROJECT_SLOT_LIMIT} projects live at a time. Archive one old project if you want to add a new one.
+            </p>
+          </div>
+          <div className="rounded-2xl border-2 border-ink bg-butter px-4 py-3 text-sm font-black text-ink">
+            {slotsLeft > 0 ? `${slotsLeft} slot${slotsLeft === 1 ? '' : 's'} left` : 'No free slots'}
+          </div>
+        </div>
 
-          {fileError ? (
-            <div className="rounded-xl border border-ink bg-peach px-3 py-2 text-sm font-semibold text-ink">
-              {fileError}
+        <div className="flex flex-wrap gap-3">
+          <TactileButton href="/submit" variant="primary" aria-disabled={slotsLeft === 0} className={slotsLeft === 0 ? 'pointer-events-none opacity-60' : ''}>
+            Add Project
+          </TactileButton>
+          {slotsLeft === 0 ? (
+            <div className="rounded-2xl border-2 border-ink bg-peach px-4 py-3 text-sm font-semibold text-ink">
+              Archive one live project first.
             </div>
           ) : null}
         </div>
-      </div>
 
-      {clientError ? (
-        <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
-          {clientError}
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-black text-ink">Live Projects</h3>
+            {activeProjects.length ? (
+              <div className="mt-3 grid gap-4">
+                {activeProjects.map((project) => (
+                  <div key={project.id} className="rounded-[24px] border-2 border-ink/20 bg-paper p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="rounded-full border border-ink/20 bg-white/80 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-forest">
+                          {project.project_tag}
+                        </div>
+                        <h4 className="mt-3 text-xl font-black text-ink">{project.title}</h4>
+                        <p className="mt-2 text-sm leading-6 text-ink/80">{project.summary}</p>
+                      </div>
+                      <div className="rounded-full border-2 border-ink bg-mint px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-ink">
+                        Live
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <TactileButton href={`/project/${project.slug}`} variant="secondary">Open</TactileButton>
+                      <TactileButton
+                        type="button"
+                        variant="ghost"
+                        disabled={busyProjectId === project.id}
+                        onClick={() => handleProjectAction(project.id, 'archive')}
+                      >
+                        {busyProjectId === project.id ? 'Saving...' : 'Archive'}
+                      </TactileButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-[24px] border-2 border-dashed border-ink/30 bg-white/70 p-5 text-sm text-ink/75">
+                No live projects yet.
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-lg font-black text-ink">Archived Projects</h3>
+            {archivedProjects.length ? (
+              <div className="mt-3 grid gap-4">
+                {archivedProjects.map((project) => (
+                  <div key={project.id} className="rounded-[24px] border-2 border-ink/20 bg-white/70 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="rounded-full border border-ink/20 bg-paper px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-forest">
+                          {project.project_tag}
+                        </div>
+                        <h4 className="mt-3 text-xl font-black text-ink">{project.title}</h4>
+                        <p className="mt-2 text-sm leading-6 text-ink/80">{project.summary}</p>
+                      </div>
+                      <div className="rounded-full border-2 border-ink bg-lilac px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-ink">
+                        Archived
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <TactileButton
+                        type="button"
+                        variant="secondary"
+                        disabled={busyProjectId === project.id || slotsLeft === 0}
+                        onClick={() => handleProjectAction(project.id, 'restore')}
+                      >
+                        {busyProjectId === project.id ? 'Saving...' : 'Restore'}
+                      </TactileButton>
+                      {slotsLeft === 0 ? (
+                        <div className="rounded-2xl border-2 border-ink bg-peach px-4 py-3 text-sm font-semibold text-ink">
+                          No free slot to restore this project.
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 rounded-[24px] border-2 border-dashed border-ink/30 bg-white/70 p-5 text-sm text-ink/75">
+                No archived projects.
+              </div>
+            )}
+          </div>
         </div>
-      ) : null}
-
-      <div className="flex items-center gap-3">
-        <TactileButton type="submit" disabled={saving || Boolean(clientError) || Boolean(fileError)} variant="primary">
-          {saving ? 'Saving...' : 'Save Profile'}
-        </TactileButton>
-        {message ? <span className="text-sm text-ink/75">{message}</span> : null}
-      </div>
-    </form>
+      </section>
+    </div>
   );
 }
