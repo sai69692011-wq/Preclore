@@ -24,7 +24,14 @@ export default async function ProfilePage() {
     );
   }
 
-  const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle();
+  const [{ data: profile }, { data: projects }] = await Promise.all([
+    supabase.from('users').select('*').eq('id', user.id).maybeSingle(),
+    supabase
+      .from('projects')
+      .select('id, slug, title, summary, project_tag, status, published_at')
+      .eq('researcher_id', user.id)
+      .order('published_at', { ascending: false })
+  ]);
 
-  return <ProfileForm initialProfile={profile} />;
+  return <ProfileForm initialProfile={profile} initialProjects={projects || []} />;
 }
