@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ShimmerProgress from '@/components/ui/shimmer-progress';
 import TactileButton from '@/components/ui/tactile-button';
-import { PROJECT_TAGS, QUEST_STEPS } from '@/lib/constants';
+import { PROJECT_SLOT_LIMIT, PROJECT_TAGS, QUEST_STEPS } from '@/lib/constants';
 
 const STORAGE_KEY = 'preclore-v24-submit-quest-draft';
 
@@ -12,7 +12,9 @@ const initialForm = {
   title: '',
   regionLabel: '',
   summary: '',
-  projectDocumentUrl: '',
+  problemStatement: '',
+  hypothesis: '',
+  methodology: '',
   evidenceUrls: '',
   citations: '',
   systemsImpact: '',
@@ -38,7 +40,7 @@ function parseEvidenceUrls(value) {
     .filter(Boolean);
 }
 
-export default function SubmitQuest({ isAuthenticated }) {
+export default function SubmitQuest({ isAuthenticated, activeProjectCount = 0 }) {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState(initialForm);
@@ -47,6 +49,8 @@ export default function SubmitQuest({ isAuthenticated }) {
   const [draftLoaded, setDraftLoaded] = useState(false);
 
   const progress = useMemo(() => ((stepIndex + 1) / QUEST_STEPS.length) * 100, [stepIndex]);
+  const slotsLeft = Math.max(PROJECT_SLOT_LIMIT - activeProjectCount, 0);
+  const slotsFull = isAuthenticated && slotsLeft === 0;
 
   useEffect(() => {
     try {
@@ -78,43 +82,54 @@ export default function SubmitQuest({ isAuthenticated }) {
   }
 
   function validateCurrentStep() {
+    const requiredByStep = [
+      ['title', 'regionLabel'],
+      ['summary'],
+      ['problemStatement'],
+      ['hypothesis'],
+      ['methodology'],
+      [],
+      ['systemsImpact', 'publicGoodCase', 'projectTag'],
+      ['confirmPublicGood']
+    ];
+
+    const requiredFields = requiredByStep[stepIndex];
+    const invalid = requiredFields.find((field) => {
+      if (field === 'confirmPublicGood') return !form.confirmPublicGood;
+      return !String(form[field] || '').trim();
+    });
+
+    if (invalid) {
+      setError('Please finish this step before moving on.');
+      return false;
+    }
+
     if (stepIndex === 0) {
       if (String(form.title).trim().length < 8) {
-        setError('Please enter a project title with at least 8 characters.');
+        setError('Project title should be at least 8 characters.');
         return false;
       }
-
-      if (!String(form.projectTag).trim()) {
-        setError('Please choose a project type.');
-        return false;
-      }
-    }
-
-    if (stepIndex === 1) {
-      if (String(form.summary).trim().length < 40) {
-        setError('Please add a short description of at least 40 characters.');
+      if (String(form.regionLabel).trim().length < 2) {
+        setError('Add a valid city or region.');
         return false;
       }
     }
 
-    if (stepIndex === 2 && String(form.projectDocumentUrl || '').trim()) {
-      if (!isHttpUrl(form.projectDocumentUrl)) {
-        setError('Please enter a valid public file/link URL.');
-        return false;
-      }
-    }
-
-    if (stepIndex === 3) {
+    if (stepIndex === 5 || stepIndex === 7) {
       const evidenceUrls = parseEvidenceUrls(form.evidenceUrls);
       const invalidUrl = evidenceUrls.find((url) => !isHttpUrl(url));
       if (invalidUrl) {
-        setError(`This evidence link is not valid: ${invalidUrl}`);
+        setError(`Invalid link: ${invalidUrl}`);
+        return false;
+      }
+      if (form.projectTag === 'Field Verified' && evidenceUrls.length === 0) {
+        setError('Field Verified projects need at least one public link.');
         return false;
       }
     }
 
-    if (stepIndex === 5 && form.confirmPublicGood !== true) {
-      setError('Please confirm before publishing.');
+    if (stepIndex === 7 && String(form.publicGoodCase || '').trim().length < 20) {
+      setError('Explain in at least 20 characters why this helps others.');
       return false;
     }
 
@@ -133,6 +148,11 @@ export default function SubmitQuest({ isAuthenticated }) {
   }
 
   async function handleSubmit() {
+    if (slotsFull) {
+      setError(`You already used all ${PROJECT_SLOT_LIMIT} live project slots. Archive one from your profile first.`);
+      return;
+    }
+
     if (!validateCurrentStep()) return;
 
     setSubmitting(true);
@@ -165,31 +185,39 @@ export default function SubmitQuest({ isAuthenticated }) {
 
   const panels = {
     identity: (
+      <div className="grid gap-4 md:grid-cols-2">
+        <input className="field" placeholder="Project title" value={form.title} onChange={(e) => update('title', e.target.value)} />
+        <input className="field" placeholder="City / Region" value={form.regionLabel} onChange={(e) => update('regionLabel', e.target.value)} />
+      </div>
+    ),
+    summary: (
+      <textarea className="field min-h-36" placeholder="What is this project about?" value={form.summary} onChange={(e) => update('summary', e.target.value)} />
+    ),
+    problem: (
+      <textarea className="field min-h-36" placeholder="What exact problem are you trying to solve?" value={form.problemStatement} onChange={(e) => update('problemStatement', e.target.value)} />
+    ),
+    hypothesis: (
+      <textarea className="field min-h-36" placeholder="What is your main idea or expected result?" value={form.hypothesis} onChange={(e) => update('hypothesis', e.target.value)} />
+    ),
+    method: (
+      <textarea className="field min-h-36" placeholder="How did you build, test, or study this?" value={form.methodology} onChange={(e) => update('methodology', e.target.value)} />
+    ),
+    evidence: (
       <div className="space-y-4">
-        <input
-          className="field"
-          placeholder="Project title"
-          value={form.title}
-          onChange={(e) => update('title', e.target.value)}
-        />
-
-        <input
-          className="field"
-          placeholder="City / Region (optional)"
-          value={form.regionLabel}
-          onChange={(e) => update('regionLabel', e.target.value)}
-        />
-
+        <textarea className="field min-h-24" placeholder="Public links (Google Drive, Docs, PDF, video) — one per line or comma separated" value={form.evidenceUrls} onChange={(e) => update('evidenceUrls', e.target.value)} />
+        <textarea className="field min-h-24" placeholder="Sources or citations (optional)" value={form.citations} onChange={(e) => update('citations', e.target.value)} />
+        <textarea className="field min-h-24" placeholder="How can someone repeat this project? (optional)" value={form.reproducibilityNote} onChange={(e) => update('reproducibilityNote', e.target.value)} />
+      </div>
+    ),
+    impact: (
+      <div className="space-y-4">
+        <textarea className="field min-h-28" placeholder="Who can this help and how?" value={form.systemsImpact} onChange={(e) => update('systemsImpact', e.target.value)} />
+        <textarea className="field min-h-28" placeholder="Why should this be public on Preclore?" value={form.publicGoodCase} onChange={(e) => update('publicGoodCase', e.target.value)} />
         <div>
           <div className="mb-2 text-sm font-black text-ink">Project type</div>
           <div className="grid gap-3 md:grid-cols-2">
             {PROJECT_TAGS.map((tag) => (
-              <label
-                key={tag}
-                className={`rounded-2xl border-2 p-4 text-sm font-semibold transition ${
-                  form.projectTag === tag ? 'border-ink bg-mint' : 'border-ink/30 bg-white/70'
-                }`}
-              >
+              <label key={tag} className={`rounded-2xl border-2 p-4 text-sm font-semibold transition ${form.projectTag === tag ? 'border-ink bg-mint' : 'border-ink/30 bg-white/70'}`}>
                 <input
                   checked={form.projectTag === tag}
                   className="mr-2"
@@ -204,125 +232,53 @@ export default function SubmitQuest({ isAuthenticated }) {
         </div>
       </div>
     ),
-
-    summary: (
-      <textarea
-        className="field min-h-40"
-        placeholder="Write a short description of your project. What is it about, what did you study, or what did you observe?"
-        value={form.summary}
-        onChange={(e) => update('summary', e.target.value)}
-      />
-    ),
-
-    document: (
-      <div className="space-y-4">
-        <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
-          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Project file or link (optional)</div>
-          <p className="mt-3 text-sm leading-6 text-ink/80">
-            You can add a Google Drive, Google Docs, Dropbox, OneDrive, or public PDF link here.
-            Make sure anyone with the link can view it.
-          </p>
-        </div>
-
-        <input
-          className="field"
-          placeholder="Paste your Google Drive / Docs / Dropbox / OneDrive / PDF link"
-          value={form.projectDocumentUrl}
-          onChange={(e) => update('projectDocumentUrl', e.target.value)}
-        />
-      </div>
-    ),
-
-    evidence: (
-      <div className="space-y-4">
-        <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
-          This section is optional. Add links, references, or proof only if you want to strengthen your project.
-        </div>
-
-        <textarea
-          className="field min-h-24"
-          placeholder="Evidence links (optional) — one per line or comma separated"
-          value={form.evidenceUrls}
-          onChange={(e) => update('evidenceUrls', e.target.value)}
-        />
-
-        <textarea
-          className="field min-h-24"
-          placeholder="References or citations (optional)"
-          value={form.citations}
-          onChange={(e) => update('citations', e.target.value)}
-        />
-
-        <textarea
-          className="field min-h-24"
-          placeholder="How someone else could repeat this work (optional)"
-          value={form.reproducibilityNote}
-          onChange={(e) => update('reproducibilityNote', e.target.value)}
-        />
-      </div>
-    ),
-
-    impact: (
-      <div className="space-y-4">
-        <div className="rounded-[24px] border-2 border-ink bg-paper p-5 text-sm leading-6 text-ink/80">
-          This section is optional. Add it if you want to explain why the project matters more deeply.
-        </div>
-
-        <textarea
-          className="field min-h-28"
-          placeholder="What bigger issue or system does this project connect to? (optional)"
-          value={form.systemsImpact}
-          onChange={(e) => update('systemsImpact', e.target.value)}
-        />
-
-        <textarea
-          className="field min-h-28"
-          placeholder="Why is this useful for the public good? (optional)"
-          value={form.publicGoodCase}
-          onChange={(e) => update('publicGoodCase', e.target.value)}
-        />
-      </div>
-    ),
-
     publish: (
       <div className="space-y-5">
         <div className="rounded-[24px] border-2 border-ink bg-paper p-5">
-          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Ready to publish</div>
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Before you publish</div>
           <p className="mt-3 text-sm leading-6 text-ink/80">
-            Your title, description, and project type are enough to publish. Optional links and proof can improve trust and VQ score.
+            Your project will be shown publicly on Preclore. Use public links only. Do not add private files or personal details.
           </p>
         </div>
-
         <label className="flex items-start gap-3 rounded-2xl border-2 border-ink/30 bg-white/70 p-4 text-sm text-ink/80">
-          <input
-            checked={form.confirmPublicGood}
-            onChange={(e) => update('confirmPublicGood', e.target.checked)}
-            type="checkbox"
-          />
-          <span>I confirm this is a public-good registry submission and can be published instantly.</span>
+          <input checked={form.confirmPublicGood} onChange={(e) => update('confirmPublicGood', e.target.checked)} type="checkbox" />
+          <span>I confirm that this project can be shown publicly on Preclore.</span>
         </label>
       </div>
     )
   };
+
+  if (slotsFull) {
+    return (
+      <div className="space-y-5 rounded-[34px] border-2 border-ink bg-white/70 p-6 shadow-[0_8px_0_0_rgba(44,43,42,1)] lg:p-8">
+        <div className="rounded-[24px] border-2 border-ink bg-peach p-5">
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-forest">Project limit reached</div>
+          <h2 className="mt-3 text-3xl font-black text-ink">You already used all {PROJECT_SLOT_LIMIT} live project slots</h2>
+          <p className="mt-3 text-sm leading-6 text-ink/80">
+            Archive one old project from your profile, then come back here to add a new one.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <TactileButton href="/profile" variant="primary">Open My Profile</TactileButton>
+          <TactileButton href="/journal" variant="secondary">View Projects</TactileButton>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 rounded-[34px] border-2 border-ink bg-white/70 p-6 shadow-[0_8px_0_0_rgba(44,43,42,1)] lg:p-8">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">6-Step Project Form</div>
-            <h2 className="text-3xl font-black text-ink">
-              Step {stepIndex + 1}: {step.label}
-            </h2>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Add Project</div>
+            <h2 className="text-3xl font-black text-ink">Step {stepIndex + 1}: {step.label}</h2>
           </div>
-
           <div className="rounded-full border-2 border-ink bg-butter px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-ink">
-            Instant publish
+            {activeProjectCount} / {PROJECT_SLOT_LIMIT} slots used
           </div>
         </div>
-
-        <ShimmerProgress value={progress} label={`Progress ${Math.round(progress)}%`} />
-
+        <ShimmerProgress value={progress} label={`Form progress ${Math.round(progress)}%`} />
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/70">
           {draftLoaded ? 'Draft autosave active' : 'Loading draft...'}
         </div>
@@ -330,33 +286,30 @@ export default function SubmitQuest({ isAuthenticated }) {
 
       {!isAuthenticated ? (
         <div className="rounded-[24px] border-2 border-ink bg-peach p-5 text-sm font-semibold text-ink">
-          Please sign in first so your submission can be linked to your profile.
+          Login first so this project is linked to your profile.
         </div>
-      ) : null}
+      ) : (
+        <div className="rounded-[24px] border-2 border-ink/30 bg-paper p-4 text-sm text-ink/80">
+          You have <strong>{slotsLeft}</strong> free slot{slotsLeft === 1 ? '' : 's'} left.
+        </div>
+      )}
 
       <div className="space-y-5">
         {panels[step.id]}
-        {error ? (
-          <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">
-            {error}
-          </div>
-        ) : null}
+        {error ? <div className="rounded-2xl border-2 border-ink bg-peach p-3 text-sm font-semibold text-ink">{error}</div> : null}
       </div>
 
       <div className="flex flex-wrap justify-between gap-3">
-        <TactileButton onClick={prevStep} variant="ghost" disabled={stepIndex === 0}>
-          Back
-        </TactileButton>
-
-        {stepIndex < QUEST_STEPS.length - 1 ? (
-          <TactileButton onClick={nextStep} variant="primary">
-            Next Step
-          </TactileButton>
-        ) : (
-          <TactileButton onClick={handleSubmit} variant="primary" disabled={!isAuthenticated || submitting}>
-            {submitting ? 'Publishing...' : 'Publish Project'}
-          </TactileButton>
-        )}
+        <TactileButton onClick={prevStep} variant="ghost" disabled={stepIndex === 0}>Back</TactileButton>
+        <div className="flex gap-3">
+          {stepIndex < QUEST_STEPS.length - 1 ? (
+            <TactileButton onClick={nextStep} variant="primary">Next Step</TactileButton>
+          ) : (
+            <TactileButton onClick={handleSubmit} variant="primary" disabled={!isAuthenticated || submitting}>
+              {submitting ? 'Publishing...' : 'Publish Project'}
+            </TactileButton>
+          )}
+        </div>
       </div>
     </div>
   );
