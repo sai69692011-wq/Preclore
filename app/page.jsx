@@ -1,118 +1,152 @@
 import TactileButton from '@/components/ui/tactile-button';
-import { createClient } from '@/lib/supabase/server';
-import { deriveAccessProfile } from '@/lib/access';
 
-export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+const siteUrl = 'https://preclore.vercel.app';
 
-  let access = null;
+export const metadata = {
+  title: 'Preclore | Student Research Platform',
+  description:
+    'Preclore is a student research platform where students can share projects, add public links, and stay visible after exhibition day.'
+};
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role, birth_year')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    access = deriveAccessProfile(profile || {});
+const structuredData = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Preclore',
+    url: siteUrl,
+    logo: `${siteUrl}/favicon.ico`,
+    description:
+      'Preclore is a student research platform where students can share projects, add public links, and stay visible after exhibition day.'
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Preclore',
+    url: siteUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${siteUrl}/journal?query={search_term_string}`,
+      'query-input': 'required name=search_term_string'
+    }
   }
+];
 
-  const canSubmit = Boolean(user && access?.canSubmit);
-
+export default function HomePage() {
   return (
-    <div className="space-y-8">
-      <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[30px] border-2 border-ink bg-white/75 p-6 shadow-[0_8px_0_0_rgba(44,43,42,1)] lg:p-8">
+    <div className="space-y-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
+      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-[36px] border-2 border-ink bg-white/75 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
           <div className="inline-flex rounded-full border-2 border-ink bg-mint px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-forest">
             Student Research • Public Projects • Safe Contact
           </div>
 
-          <h1 className="mt-5 text-3xl font-black leading-tight text-ink lg:text-5xl">
-            Show your project online, even after the exhibition ends.
+          <h1 className="mt-5 text-5xl font-black leading-tight text-ink">
+            Preclore keeps student projects visible after exhibition day.
           </h1>
 
-          <p className="mt-4 max-w-3xl text-base leading-7 text-ink/80 lg:text-lg lg:leading-8">
-            Preclore helps students post project summaries, add public links, and let the right people
-            discover their work. Teachers, reviewers, and NGOs can request contact — but only if the student agrees.
+          <p className="mt-5 max-w-3xl text-lg leading-8 text-ink/80">
+            Preclore is a student research platform where students can post project summaries,
+            add public links, and let teachers, professors, reviewers, and NGOs discover their
+            work.
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            {canSubmit ? (
-              <TactileButton href="/submit" variant="primary" className="px-4 py-2 text-sm">
-                Add Project
-              </TactileButton>
-            ) : user ? (
-              <TactileButton href="/profile" variant="primary" className="px-4 py-2 text-sm">
-                My Profile
-              </TactileButton>
-            ) : (
-              <TactileButton href="/auth" variant="primary" className="px-4 py-2 text-sm">
-                Login
-              </TactileButton>
-            )}
+          <p className="mt-4 max-w-3xl text-base leading-7 text-ink/75">
+            Instead of letting good ideas disappear after one event, Preclore helps student work
+            stay visible, searchable, and useful.
+          </p>
 
-            <TactileButton href="/journal" variant="secondary" className="px-4 py-2 text-sm">
+          <div className="mt-8 flex flex-wrap gap-3">
+            <TactileButton href="/auth" variant="primary">
+              Login
+            </TactileButton>
+            <TactileButton href="/journal" variant="secondary">
               View Projects
             </TactileButton>
-
-            <TactileButton href="/support" variant="lilac" className="px-4 py-2 text-sm">
-              Support Preclore
+            <TactileButton
+              href="https://www.youtube.com/watch?v=XIlHzTBiAEQ"
+              target="_blank"
+              rel="noreferrer"
+              variant="lilac"
+            >
+              Watch How It Works
             </TactileButton>
           </div>
         </div>
 
-        <div className="rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_8px_0_0_rgba(44,43,42,1)] lg:p-8">
-          <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Why use Preclore?</div>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-ink/80">
-            <li>• Keep your project visible after the exhibition is over.</li>
-            <li>• Share a simple public link instead of uploading big files.</li>
-            <li>• Let reviewers, teachers, and NGOs discover good work.</li>
-            <li>• Approve contact only when you want to.</li>
-            <li>• Build a public track record of your ideas.</li>
+        <div className="rounded-[36px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
+          <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
+            For Teachers, Professors, and NGOs
+          </div>
+
+          <h2 className="mt-4 text-3xl font-black text-ink">
+            Find student work that should not be lost.
+          </h2>
+
+          <ul className="mt-5 space-y-3 text-sm leading-7 text-ink/80">
+            <li>• Browse public student projects in one place.</li>
+            <li>• View project summaries and public proof links.</li>
+            <li>• Discover useful work even after exhibitions end.</li>
+            <li>• Request contact only if the student agrees.</li>
+            <li>• Help promising ideas reach the right people.</li>
           </ul>
         </div>
       </section>
 
-      <section className="rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_8px_0_0_rgba(44,43,42,1)] lg:p-8">
-        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">How to Join Preclore</div>
-        <h2 className="mt-3 text-2xl font-black text-ink lg:text-3xl">
-          Watch this quick walkthrough
-        </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80 lg:text-base">
-          New here? This short video explains how students, teachers, reviewers, and NGOs can create an account and start using Preclore.
-        </p>
-
-        <div className="mt-6 overflow-hidden rounded-[24px] border-2 border-ink bg-white">
-          <div className="aspect-video w-full">
-            <iframe
-              className="h-full w-full"
-              src="https://www.youtube.com/embed/XIlHzTBiAEQ"
-              title="How to create an account on Preclore"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-5 md:grid-cols-3">
         {[
-          ['1. Create Account', 'Sign up using your email and create a password just for Preclore.'],
-          ['2. Build Profile', 'Add your name, school or organization, and basic details so people know who you are.'],
-          ['3. Add Project', 'Post your project title, short description, and any public links or proof you want to share.']
+          [
+            '1. Create Account',
+            'Students, teachers, professors, and NGOs can join Preclore with a simple account.'
+          ],
+          [
+            '2. Add Project',
+            'Students share a project title, short summary, and public links instead of uploading heavy files.'
+          ],
+          [
+            '3. Stay Discoverable',
+            'Projects remain visible online so the right people can still find them later.'
+          ]
         ].map(([title, body]) => (
           <div
             key={title}
-            className="rounded-[24px] border-2 border-ink bg-white/70 p-5 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
+            className="rounded-[28px] border-2 border-ink bg-white/70 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]"
           >
-            <h2 className="text-xl font-black text-ink">{title}</h2>
+            <h2 className="text-2xl font-black text-ink">{title}</h2>
             <p className="mt-3 text-sm leading-6 text-ink/80">{body}</p>
           </div>
         ))}
+      </section>
+
+      <section className="rounded-[34px] border-2 border-ink bg-paper p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
+              Why Preclore Matters
+            </div>
+            <h2 className="mt-3 text-3xl font-black text-ink">
+              A student project should be more than one day, one table, or one score.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-ink/80">
+              Preclore helps students build a visible record of their ideas. It also helps teachers,
+              professors, and NGOs discover work that might actually solve real problems or deserve
+              support.
+            </p>
+          </div>
+
+          <div className="rounded-[28px] border-2 border-ink bg-white/80 p-6">
+            <ul className="space-y-3 text-sm leading-6 text-ink/80">
+              <li>• Preclore makes student research easier to discover.</li>
+              <li>• Preclore keeps projects visible after the exhibition is over.</li>
+              <li>• Preclore supports public links, public summaries, and safer contact requests.</li>
+              <li>• Preclore is built for students, teachers, professors, and NGOs.</li>
+            </ul>
+          </div>
+        </div>
       </section>
     </div>
   );
