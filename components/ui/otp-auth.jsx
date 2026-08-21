@@ -10,14 +10,14 @@ const AUTH_MODES = {
   create: {
     title: 'Create your account',
     label: 'Create Account',
-    description: 'New here? Enter your email and we will send you a 6-digit code.',
+    description: 'New here? Create your account first. We will send a 6-digit code to your email.',
     emailHint: 'Use an email you can open right now.',
     submitLabel: 'Send Code for Create Account'
   },
   login: {
     title: 'Login to your account',
     label: 'Login',
-    description: 'Already have an account? Enter the same email you used before.',
+    description: 'Already have an account? Use the same email and login here.',
     emailHint: 'Use the email already linked to your account.',
     submitLabel: 'Send Code for Login'
   }
@@ -154,12 +154,16 @@ export default function OtpAuth() {
 
   return (
     <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
-      <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Login</div>
+      <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Create Account First</div>
+
       <h1 className="mt-3 text-4xl font-black text-ink">
         {step === 'email' ? 'Create account or login' : 'Enter your code'}
       </h1>
+
       <p className="mt-3 text-sm leading-7 text-ink/80">
-        {step === 'email' ? currentMode.description : `Enter the 6-digit code sent to ${normalizeText(email)}.`}
+        {step === 'email'
+          ? 'If you are new, use Create Account first. If you already joined before, use Login.'
+          : `Enter the 6-digit code sent to ${normalizeText(email)}.`}
       </p>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
