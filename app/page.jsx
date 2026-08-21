@@ -1,4 +1,6 @@
 import TactileButton from '@/components/ui/tactile-button';
+import { deriveAccessProfile } from '@/lib/access';
+import { createClient } from '@/lib/supabase/server';
 
 const siteUrl = 'https://preclore.vercel.app';
 
@@ -14,7 +16,7 @@ const structuredData = [
     '@type': 'Organization',
     name: 'Preclore',
     url: siteUrl,
-    logo: `${siteUrl}/favicon.ico`,
+    logo: `${siteUrl}/preclore-logo.webp`,
     description:
       'Preclore is a student research platform where students can share projects, add public links, and stay visible after exhibition day.'
   },
@@ -31,7 +33,30 @@ const structuredData = [
   }
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  let access = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role, birth_year')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    access = deriveAccessProfile(profile || {});
+  }
+
+  const primaryButton = !user
+    ? { href: '/auth', label: 'Create Account / Login' }
+    : access?.canSubmit
+      ? { href: '/submit', label: 'Add Project' }
+      : { href: '/journal', label: 'View Projects' };
+
   return (
     <div className="space-y-10">
       <script
@@ -51,29 +76,25 @@ export default function HomePage() {
 
           <p className="mt-5 max-w-3xl text-lg leading-8 text-ink/80">
             Preclore is a student research platform where students can post project summaries,
-            add public links, and let teachers, professors, reviewers, and NGOs discover their
-            work.
+            add public links, and let teachers, professors, reviewers, and NGOs discover their work.
           </p>
 
           <p className="mt-4 max-w-3xl text-base leading-7 text-ink/75">
-            Instead of letting good ideas disappear after one event, Preclore helps student work
-            stay visible, searchable, and useful.
+            Good work should not disappear after one event. Preclore helps ideas stay visible,
+            searchable, and useful.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <TactileButton href="/auth" variant="primary">
-              Login
+            <TactileButton href={primaryButton.href} variant="primary">
+              {primaryButton.label}
             </TactileButton>
+
             <TactileButton href="/journal" variant="secondary">
-              View Projects
+              Browse Research
             </TactileButton>
-            <TactileButton
-              href="https://www.youtube.com/watch?v=XIlHzTBiAEQ"
-              target="_blank"
-              rel="noreferrer"
-              variant="lilac"
-            >
-              Watch How It Works
+
+            <TactileButton href="/support" variant="lilac">
+              Support Preclore
             </TactileButton>
           </div>
         </div>
@@ -101,15 +122,15 @@ export default function HomePage() {
         {[
           [
             '1. Create Account',
-            'Students, teachers, professors, and NGOs can join Preclore with a simple account.'
+            'Students, teachers, professors, reviewers, and NGOs can create an account on Preclore.'
           ],
           [
-            '2. Add Project',
-            'Students share a project title, short summary, and public links instead of uploading heavy files.'
+            '2. Share or Discover',
+            'Students can post projects, while teachers and NGOs can discover useful work already online.'
           ],
           [
-            '3. Stay Discoverable',
-            'Projects remain visible online so the right people can still find them later.'
+            '3. Keep Ideas Alive',
+            'Projects stay visible after exhibition day so the right people can still find them later.'
           ]
         ].map(([title, body]) => (
           <div
@@ -133,17 +154,18 @@ export default function HomePage() {
             </h2>
             <p className="mt-4 text-sm leading-7 text-ink/80">
               Preclore helps students build a visible record of their ideas. It also helps teachers,
-              professors, and NGOs discover work that might actually solve real problems or deserve
-              support.
+              professors, and NGOs discover work that might solve real problems or deserve support.
             </p>
           </div>
 
           <div className="rounded-[28px] border-2 border-ink bg-white/80 p-6">
             <ul className="space-y-3 text-sm leading-6 text-ink/80">
-              <li>• Preclore makes student research easier to discover.</li>
-              <li>• Preclore keeps projects visible after the exhibition is over.</li>
-              <li>• Preclore supports public links, public summaries, and safer contact requests.</li>
-              <li>• Preclore is built for students, teachers, professors, and NGOs.</li>
+              <li>• Research paper</li>
+              <li>• Experiment</li>
+              <li>• Prototype</li>
+              <li>• Blog or article</li>
+              <li>• Idea or concept</li>
+              <li>• Community project</li>
             </ul>
           </div>
         </div>
