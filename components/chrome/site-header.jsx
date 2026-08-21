@@ -1,8 +1,7 @@
 import Image from 'next/image';
-import logo from '@/preclore-logo.webp';
+import { deriveAccessProfile } from '@/lib/access';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/server';
-import { deriveAccessProfile } from '@/lib/access';
 
 export default async function SiteHeader() {
   const supabase = await createClient();
@@ -24,53 +23,35 @@ export default async function SiteHeader() {
 
   const navItems = [
     { href: '/', label: 'Home' },
-    { href: '/journal', label: 'Browse Research' },
+    { href: '/journal', label: 'Projects' },
+    ...(access?.canSubmit ? [{ href: '/submit', label: 'Add Project' }] : []),
     { href: '/support', label: 'Support' },
-    { href: '/payment', label: 'Donate' }
+    ...(user ? [{ href: '/connections', label: 'Requests' }] : []),
+    { href: '/profile', label: user ? 'My Profile' : 'Profile' },
+    { href: '/auth', label: user ? 'Switch Account' : 'Create Account / Login' }
   ];
-
-  if (user && access?.canSubmit) {
-    navItems.splice(1, 0, { href: '/submit', label: 'Add Project' });
-  }
-
-  if (user) {
-    navItems.push({ href: '/connections', label: 'Requests' });
-    navItems.push({ href: '/profile', label: 'My Profile' });
-  } else {
-    navItems.push({ href: '/auth', label: 'Login' });
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-6 lg:py-4">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-6">
         <div className="flex items-center gap-3">
           <Image
-            src={logo}
+            src="/preclore-logo.webp"
             alt="Preclore logo"
             width={48}
             height={48}
             className="h-12 w-12 object-contain"
             priority
           />
-
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
-              Preclore v2.4
-            </div>
-            <div className="text-base font-black text-ink sm:text-lg">
-              Student Research Platform
-            </div>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Preclore</div>
+            <div className="text-lg font-black text-ink">Student Research Platform</div>
           </div>
         </div>
 
         <nav className="flex flex-wrap gap-2">
           {navItems.map((item) => (
-            <TactileButton
-              key={item.href}
-              href={item.href}
-              variant="ghost"
-              className="px-3 py-2 text-xs sm:px-4"
-            >
+            <TactileButton key={item.href} href={item.href} variant="ghost" className="px-4 py-2 text-xs">
               {item.label}
             </TactileButton>
           ))}
