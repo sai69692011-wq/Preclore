@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import logo from './preclore-logo.webp';
 import { deriveAccessProfile } from '@/lib/access';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/server';
@@ -38,7 +37,7 @@ export default async function SiteHeader() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-6">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src={logo}
+            src="/preclore-logo.webp"
             alt="Preclore logo"
             width={48}
             height={48}
