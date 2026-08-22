@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import logo from '../../public/preclore-logo.webp';
+import logo from './preclore-logo.webp';
 import { deriveAccessProfile } from '@/lib/access';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/server';
@@ -53,7 +53,12 @@ export default async function SiteHeader() {
 
         <nav className="flex flex-wrap gap-2">
           {navItems.map((item) => (
-            <TactileButton key={item.href} href={item.href} variant="ghost" className="px-4 py-2 text-xs">
+            <TactileButton
+              key={item.href}
+              href={item.href}
+              variant="ghost"
+              className="px-4 py-2 text-xs"
+            >
               {item.label}
             </TactileButton>
           ))}
