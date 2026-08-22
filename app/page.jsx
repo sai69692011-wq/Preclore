@@ -16,7 +16,7 @@ const structuredData = [
     '@type': 'Organization',
     name: 'Preclore',
     url: siteUrl,
-    logo: `${siteUrl}/preclore-logo.webp`,
+    logo: `${siteUrl}/favicon.ico`,
     description:
       'Preclore is a student research platform where students can share projects, add public links, and stay visible after exhibition day.'
   },
@@ -51,12 +51,6 @@ export default async function HomePage() {
     access = deriveAccessProfile(profile || {});
   }
 
-  const primaryButton = !user
-    ? { href: '/auth', label: 'Create Account / Login' }
-    : access?.canSubmit
-      ? { href: '/submit', label: 'Add Project' }
-      : { href: '/journal', label: 'View Projects' };
-
   return (
     <div className="space-y-10">
       <script
@@ -85,9 +79,15 @@ export default async function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <TactileButton href={primaryButton.href} variant="primary">
-              {primaryButton.label}
-            </TactileButton>
+            {access?.canSubmit ? (
+              <TactileButton href="/submit" variant="primary">
+                Add Project
+              </TactileButton>
+            ) : (
+              <TactileButton href="/auth" variant="primary">
+                Create Account / Login
+              </TactileButton>
+            )}
 
             <TactileButton href="/journal" variant="secondary">
               Browse Research
