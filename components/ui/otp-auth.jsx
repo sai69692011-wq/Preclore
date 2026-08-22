@@ -151,11 +151,14 @@ export default function OtpAuth() {
     }
 
     router.push('/profile');
+    router.refresh();
   }
 
   return (
     <div className="mx-auto max-w-2xl rounded-[34px] border-2 border-ink bg-white/80 p-8 shadow-[0_8px_0_0_rgba(44,43,42,1)]">
-      <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Create Account / Login</div>
+      <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
+        Create Account / Login
+      </div>
 
       <h1 className="mt-3 text-4xl font-black text-ink">
         {step === 'email' ? 'Create account first, or login' : 'Enter your code'}
