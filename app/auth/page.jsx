@@ -17,7 +17,7 @@ function isValidPassword(password) {
 
 function normalizeRole(role) {
   if (role === 'student') return 'student';
-  if (role === 'teacher_reviewer') return 'alumni_readonly';
+  if (role === 'teacher_reviewer') return 'mentor';
   if (role === 'guest_viewer') return 'alumni_readonly';
   return 'student';
 }
@@ -39,6 +39,10 @@ function simplifyAuthError(message = '') {
     return 'That email or password does not match. Please try again.';
   }
 
+  if (lower.includes('user already registered')) {
+    return 'This email already has an account. Please use Login.';
+  }
+
   return message || 'Something went wrong. Please try again.';
 }
 
@@ -46,7 +50,7 @@ export default function AuthPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [mode, setMode] = useState('create');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -56,6 +60,8 @@ export default function AuthPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [message, setMessage] = useState('');
   const [formError, setFormError] = useState('');
+
+  const isSignUp = mode === 'create';
 
   const emailError = useMemo(() => {
     if (!email) return '';
@@ -161,8 +167,8 @@ export default function AuthPage() {
       }
 
       setLoading(false);
-      setMessage('Your account has been created. You can now log in.');
-      setIsSignUp(false);
+      setMessage('Your account has been created. Now use Login with the same email and password.');
+      setMode('login');
       return;
     }
 
@@ -232,18 +238,52 @@ export default function AuthPage() {
   return (
     <div className="mx-auto max-w-2xl rounded-[30px] border-2 border-ink bg-white/80 p-6 shadow-[0_6px_0_0_rgba(44,43,42,1)]">
       <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
-        Account
+        Create Account / Login
       </div>
 
       <h1 className="mt-3 text-3xl font-black text-ink">
-        {isSignUp ? 'Create your account' : 'Log in'}
+        Create your account first, or login
       </h1>
 
       <p className="mt-3 text-sm leading-7 text-ink/80">
-        {isSignUp
-          ? 'Use your email and create any password you want for Preclore.'
-          : 'Enter your email and the password you created for Preclore.'}
+        If you are new, start with <strong>Create Account</strong>. If you already joined before, use <strong>Login</strong>.
       </p>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => {
+            setMode('create');
+            setFormError('');
+            setMessage('');
+          }}
+          className={`rounded-[24px] border-2 p-4 text-left transition ${
+            isSignUp
+              ? 'border-ink bg-mint shadow-[0_4px_0_0_rgba(44,43,42,1)]'
+              : 'border-ink/40 bg-white'
+          }`}
+        >
+          <div className="text-lg font-black text-ink">Create Account</div>
+          <div className="mt-1 text-sm leading-6 text-ink/75">I am new here.</div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMode('login');
+            setFormError('');
+            setMessage('');
+          }}
+          className={`rounded-[24px] border-2 p-4 text-left transition ${
+            !isSignUp
+              ? 'border-ink bg-butter shadow-[0_4px_0_0_rgba(44,43,42,1)]'
+              : 'border-ink/40 bg-white'
+          }`}
+        >
+          <div className="text-lg font-black text-ink">Login</div>
+          <div className="mt-1 text-sm leading-6 text-ink/75">I already have an account.</div>
+        </button>
+      </div>
 
       {message ? (
         <div className="mt-4 rounded-2xl border-2 border-ink bg-butter p-3 text-sm font-semibold text-ink">
@@ -284,7 +324,7 @@ export default function AuthPage() {
             </div>
 
             <p className="text-xs text-ink/70">
-              Teacher, reviewer, and NGO accounts can sign up here too. Extra access or trust badges may need manual review later.
+              Student accounts can post projects. Teacher, reviewer, NGO, and guest accounts can browse and connect, but they do not get student project slots.
             </p>
           </>
         ) : null}
@@ -341,7 +381,7 @@ export default function AuthPage() {
 
         {isSignUp ? (
           <p className="mt-4 text-center text-xs text-ink/70">
-            By signing up, you agree to our{' '}
+            By creating an account, you agree to our{' '}
             <Link
               href="/terms"
               className="font-semibold underline transition-opacity hover:opacity-80"
@@ -365,7 +405,7 @@ export default function AuthPage() {
             disabled={loading || Boolean(emailError) || Boolean(passwordError)}
             variant="primary"
           >
-            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Log In'}
+            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Login'}
           </TactileButton>
         </div>
       </form>
@@ -374,13 +414,13 @@ export default function AuthPage() {
         <button
           type="button"
           onClick={() => {
-            setIsSignUp(!isSignUp);
+            setMode(isSignUp ? 'login' : 'create');
             setFormError('');
             setMessage('');
           }}
           className="text-sm font-semibold underline transition-opacity hover:opacity-80"
         >
-          {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Create one"}
+          {isSignUp ? 'Already have an account? Login' : "Don't have an account? Create one"}
         </button>
       </div>
     </div>
