@@ -1,12 +1,12 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 // Delete a project (Master Admin or Owner)
 export async function removeProjectAction(projectId, pdfUrl) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // 1. Delete PDF file from storage if present
   if (pdfUrl) {
@@ -33,7 +33,7 @@ export async function removeProjectAction(projectId, pdfUrl) {
 
 // Send an Instagram-style Contact Request
 export async function sendContactRequestAction(receiverId, projectId) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -74,7 +74,7 @@ export async function sendContactRequestAction(receiverId, projectId) {
 
 // Accept or Decline a Contact Request
 export async function updateRequestStatusAction(requestId, status) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from('contact_requests')
