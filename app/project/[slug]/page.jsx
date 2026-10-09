@@ -6,6 +6,7 @@ import ReportButton from '@/components/ui/report-button';
 import TierBadge from '@/components/ui/tier-badge';
 import TactileButton from '@/components/ui/tactile-button';
 import { createClient } from '@/lib/supabase/server';
+import { removeProjectAction, sendContactRequestAction } from '@/app/actions';
 
 function verificationLabel(role, status) {
   if (status === 'verified') {
@@ -13,31 +14,39 @@ function verificationLabel(role, status) {
     if (role === 'mentor') return 'Verified Mentor';
     return 'Verified Reviewer';
   }
-
   if (status === 'auto_checked') {
     if (role === 'student') return 'Auto-Checked Student';
     if (role === 'mentor') return 'Auto-Checked Mentor';
     return 'Auto-Checked Reviewer';
   }
-
   return null;
 }
 
 export default async function ProjectPage({ params }) {
   const { slug } = await params;
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: projectRows } = await supabase.rpc('get_public_project_detail', {
-    project_slug: slug
+    project_slug: slug,
   });
 
   const project = projectRows?.[0] || null;
 
   if (!project) {
     notFound();
+  }
+
+  // Check if viewing user has Master Admin rights
+  let isAdmin = false;
+  if (user) {
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    isAdmin = userProfile?.is_admin === true;
   }
 
   const needsFunding = ['Project: Needs Funding', 'Needs Funding'].includes(project.project_tag);
@@ -61,10 +70,12 @@ export default async function ProjectPage({ params }) {
 
   if (needsFunding && user) {
     const { data } = await supabase.rpc('get_connected_parent_upi', {
-      target_researcher_id: project.researcher_id
+      target_researcher_id: project.researcher_id,
     });
     connectedParentUpi = data;
   }
+
+  const isOwner = user?.id === project.researcher_id;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -79,7 +90,7 @@ export default async function ProjectPage({ params }) {
         <div className="mt-5">
           <h1 className="text-4xl font-black text-ink">{project.title}</h1>
           <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-ink/70">
-            <span>{project.researcher_name}</span>
+            <span>@{project.researcher_name}</span>
             {project.researcher_institution_name ? (
               <>
                 <span>•</span>
@@ -162,10 +173,40 @@ export default async function ProjectPage({ params }) {
               ) : (
                 <p>No extra proof links were added.</p>
               )}
-
               <p><strong>Citations:</strong> {project.citations || 'Not provided'}</p>
               <p><strong>Reproducibility:</strong> {project.reproducibility_note || 'Not provided'}</p>
             </div>
+          </div>
+
+          {/* Action Bar: Contact Request & Master Admin Moderation */}
+          <div className="pt-6 border-t-2 border-ink/20 flex flex-wrap items-center gap-4">
+            {!isOwner && user && (
+              <form action={async () => {
+                'use server';
+                await sendContactRequestAction(project.researcher_id, project.id);
+              }}>
+                <button
+                  type="submit"
+                  className="rounded-full border-2 border-ink bg-sky-500 px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] text-white shadow-[0_4px_0_0_rgba(44,43,42,1)] hover:translate-y-0.5 transition-transform"
+                >
+                  ✉️ Send Contact Request
+                </button>
+              </form>
+            )}
+
+            {(isAdmin || isOwner) && (
+              <form action={async () => {
+                'use server';
+                await removeProjectAction(project.id, project.pdf_url);
+              }}>
+                <button
+                  type="submit"
+                  className="rounded-full border-2 border-ink bg-red-600 px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] text-white shadow-[0_4px_0_0_rgba(44,43,42,1)] hover:translate-y-0.5 transition-transform"
+                >
+                  🗑️ {isAdmin ? '[Master Admin] Remove Submission' : 'Delete Project'}
+                </button>
+              </form>
+            )}
           </div>
         </section>
       </article>
