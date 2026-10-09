@@ -4,9 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export default async function ConnectionsPage() {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     return (
@@ -24,21 +22,53 @@ export default async function ConnectionsPage() {
     );
   }
 
-  const [{ data: incoming }, { data: outgoing }] = await Promise.all([
-    supabase.from('mentorship_requests').select('*').eq('researcher_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('mentorship_requests').select('*').eq('requester_id', user.id).order('created_at', { ascending: false })
+  // Fetch both project contact requests and mentorship requests
+  const [
+    { data: contactIncoming },
+    { data: contactOutgoing },
+    { data: mentorIncoming },
+    { data: mentorOutgoing }
+  ] = await Promise.all([
+    supabase
+      .from('contact_requests')
+      .select('*, sender:users!sender_id(display_name), project:projects!project_id(title, slug)')
+      .eq('receiver_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('contact_requests')
+      .select('*, receiver:users!receiver_id(display_name), project:projects!project_id(title, slug)')
+      .eq('sender_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('mentorship_requests')
+      .select('*')
+      .eq('researcher_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('mentorship_requests')
+      .select('*')
+      .eq('requester_id', user.id)
+      .order('created_at', { ascending: false })
   ]);
+
+  const incoming = [...(contactIncoming || []), ...(mentorIncoming || [])];
+  const outgoing = [...(contactOutgoing || []), ...(mentorOutgoing || [])];
 
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">Trusted Access</div>
-        <h1 className="mt-2 text-4xl font-black text-ink">Requests and safe contact</h1>
+        <div className="text-xs font-black uppercase tracking-[0.3em] text-forest">
+          Trusted Access
+        </div>
+        <h1 className="mt-2 text-4xl font-black text-ink">
+          Requests and safe contact
+        </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
           Approve requests only when you want to share access.
         </p>
       </div>
-      <ConnectionsBoard incoming={incoming || []} outgoing={outgoing || []} />
+
+      <ConnectionsBoard incoming={incoming} outgoing={outgoing} />
     </div>
   );
 }
